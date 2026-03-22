@@ -9,8 +9,18 @@ struct QuizView: View {
                 QuizResultView(viewModel: viewModel)
             } else if let question = viewModel.currentQuestion {
                 progressBar
-                questionCard(question)
-                Spacer()
+                ScrollView {
+                    VStack(spacing: 20) {
+                        questionCard(question)
+
+                        if viewModel.hasAnswered {
+                            answerFeedback(question)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+
+                Spacer(minLength: 0)
                 navigationButton
             }
         }
@@ -21,13 +31,21 @@ struct QuizView: View {
     // MARK: - Subviews
 
     private var progressBar: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: 8) {
             ProgressView(value: viewModel.progress)
                 .tint(.blue)
 
-            Text("Question \(viewModel.currentIndex + 1) of \(viewModel.questions.count)")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            HStack {
+                Text("Question \(viewModel.currentIndex + 1) of \(viewModel.questions.count)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Spacer()
+
+                Text("Score \(viewModel.correctCount)/\(viewModel.questions.count)")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 
@@ -48,7 +66,11 @@ struct QuizView: View {
 
     private func optionButton(_ option: String, correctAnswer: String) -> some View {
         Button {
-            viewModel.selectAnswer(option)
+            guard !viewModel.hasAnswered else { return }
+            withAnimation(.easeInOut(duration: 0.2)) {
+                viewModel.selectAnswer(option)
+                viewModel.confirmAnswer()
+            }
         } label: {
             HStack {
                 Text(option)
@@ -78,6 +100,54 @@ struct QuizView: View {
         .disabled(viewModel.hasAnswered)
     }
 
+    private func answerFeedback(_ question: Question) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Label(
+                viewModel.selectedAnswer == question.correctAnswer ? "Correct" : "Correct Answer",
+                systemImage: viewModel.selectedAnswer == question.correctAnswer
+                    ? "checkmark.circle.fill"
+                    : "info.circle.fill"
+            )
+            .font(.headline)
+            .foregroundStyle(viewModel.selectedAnswer == question.correctAnswer ? .green : .blue)
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Answer")
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.secondary)
+                    .textCase(.uppercase)
+
+                Text(question.correctAnswer)
+                    .fontWeight(.medium)
+            }
+
+            if !question.explanation.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Explanation")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.secondary)
+                        .textCase(.uppercase)
+
+                    Text(question.explanation)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(.background)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .strokeBorder(.quaternary, lineWidth: 1)
+        )
+    }
+
     private func optionBackground(_ option: String, correctAnswer: String) -> some ShapeStyle {
         if viewModel.hasAnswered {
             if option == correctAnswer {
@@ -93,22 +163,17 @@ struct QuizView: View {
 
     private var navigationButton: some View {
         Group {
-            if !viewModel.hasAnswered {
-                Button("Check Answer") {
-                    withAnimation {
-                        viewModel.confirmAnswer()
-                    }
-                }
-                .disabled(viewModel.selectedAnswer == nil)
-            } else {
+            if viewModel.hasAnswered {
                 Button(viewModel.currentIndex + 1 < viewModel.questions.count ? "Next Question" : "See Results") {
                     withAnimation {
                         viewModel.nextQuestion()
                     }
                 }
+            } else {
+                Text("Select an answer to continue")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
             }
         }
-        .buttonStyle(.borderedProminent)
-        .controlSize(.large)
     }
 }

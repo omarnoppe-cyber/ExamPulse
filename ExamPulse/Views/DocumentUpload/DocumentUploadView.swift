@@ -1,10 +1,6 @@
 import SwiftUI
 
 struct DocumentUploadView: View {
-    private enum Route: Hashable {
-        case documentImport
-    }
-
     let presetTitle: String?
     let presetExamDate: Date?
 
@@ -37,18 +33,14 @@ struct DocumentUploadView: View {
                 Text(viewModel.helperText)
                     .foregroundStyle(.secondary)
 
-                NavigationLink(value: Route.documentImport) {
+                NavigationLink {
+                    DocumentImportView()
+                } label: {
                     Label("Open Full Document Import", systemImage: "square.and.arrow.up")
                 }
             }
         }
         .navigationTitle("Document Upload")
         .navigationBarTitleDisplayMode(.inline)
-        .navigationDestination(for: Route.self) { route in
-            switch route {
-            case .documentImport:
-                DocumentImportView()
-            }
-        }
     }
 }

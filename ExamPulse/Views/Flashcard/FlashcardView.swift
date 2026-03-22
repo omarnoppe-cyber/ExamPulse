@@ -2,6 +2,7 @@ import SwiftUI
 
 struct FlashcardView: View {
     @Bindable var viewModel: FlashcardViewModel
+    @State private var dragOffset: CGSize = .zero
 
     var body: some View {
         VStack(spacing: 24) {
@@ -38,30 +39,43 @@ struct FlashcardView: View {
 
     private func cardView(_ card: Flashcard) -> some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 16)
-                .fill(.background)
-                .shadow(color: .black.opacity(0.1), radius: 8, y: 4)
+            FlashcardFaceView(
+                title: "Front",
+                text: card.front
+            )
+            .opacity(viewModel.isShowingBack ? 0 : 1)
+            .rotation3DEffect(
+                .degrees(viewModel.isShowingBack ? 180 : 0),
+                axis: (x: 0, y: 1, z: 0)
+            )
 
-            RoundedRectangle(cornerRadius: 16)
-                .strokeBorder(.quaternary, lineWidth: 1)
-
-            VStack(spacing: 12) {
-                Text(viewModel.isShowingBack ? "Answer" : "Question")
-                    .font(.caption)
-                    .fontWeight(.medium)
-                    .foregroundStyle(.secondary)
-                    .textCase(.uppercase)
-
-                Text(viewModel.isShowingBack ? card.back : card.front)
-                    .font(.title3)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
-            }
-            .padding(24)
+            FlashcardFaceView(
+                title: "Back",
+                text: card.back
+            )
+            .opacity(viewModel.isShowingBack ? 1 : 0)
+            .rotation3DEffect(
+                .degrees(viewModel.isShowingBack ? 0 : -180),
+                axis: (x: 0, y: 1, z: 0)
+            )
         }
-        .frame(maxHeight: 300)
+        .frame(maxWidth: .infinity)
+        .frame(height: 360)
+        .offset(dragOffset)
+        .rotationEffect(.degrees(Double(dragOffset.width / 18)))
+        .animation(.spring(response: 0.35, dampingFraction: 0.82), value: dragOffset)
+        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: viewModel.isShowingBack)
+        .gesture(
+            DragGesture(minimumDistance: 20)
+                .onChanged { value in
+                    dragOffset = value.translation
+                }
+                .onEnded { value in
+                    handleSwipe(value.translation)
+                }
+        )
         .onTapGesture {
-            withAnimation(.easeInOut(duration: 0.25)) {
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
                 viewModel.flip()
             }
         }
@@ -70,25 +84,44 @@ struct FlashcardView: View {
     private var actionButtons: some View {
         VStack(spacing: 12) {
             if !viewModel.isShowingBack {
-                Text("Tap card to reveal answer")
+                Text("Tap to flip. Swipe left for Again, up for Hard, right for Easy.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
             } else {
-                HStack(spacing: 16) {
+                HStack(spacing: 12) {
                     Button {
-                        viewModel.markNotLearned()
+                        withAnimation(.spring(response: 0.32, dampingFraction: 0.85)) {
+                            submit(.again)
+                        }
                     } label: {
-                        Label("Still Learning", systemImage: "arrow.counterclockwise")
+                        Text("Again")
                             .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(.red)
+
+                    Button {
+                        withAnimation(.spring(response: 0.32, dampingFraction: 0.85)) {
+                            submit(.hard)
+                        }
+                    } label: {
+                        Text("Hard")
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
                     }
                     .buttonStyle(.bordered)
                     .tint(.orange)
 
                     Button {
-                        viewModel.markLearned()
+                        withAnimation(.spring(response: 0.32, dampingFraction: 0.85)) {
+                            submit(.easy)
+                        }
                     } label: {
-                        Label("Got It", systemImage: "checkmark")
+                        Text("Easy")
                             .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
                     }
                     .buttonStyle(.borderedProminent)
                     .tint(.green)
@@ -117,5 +150,69 @@ struct FlashcardView: View {
             .padding(.top)
         }
         .padding()
+    }
+
+    private func handleSwipe(_ translation: CGSize) {
+        let horizontalThreshold: CGFloat = 110
+        let upwardThreshold: CGFloat = -110
+
+        if !viewModel.isShowingBack {
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                dragOffset = .zero
+            }
+            return
+        }
+
+        if translation.width > horizontalThreshold {
+            submit(.easy)
+        } else if translation.width < -horizontalThreshold {
+            submit(.again)
+        } else if translation.height < upwardThreshold {
+            submit(.hard)
+        } else {
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                dragOffset = .zero
+            }
+        }
+    }
+
+    private func submit(_ rating: FlashcardViewModel.ReviewRating) {
+        dragOffset = .zero
+        viewModel.review(rating)
+    }
+}
+
+private struct FlashcardFaceView: View {
+    let title: String
+    let text: String
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(.background)
+                .shadow(color: .black.opacity(0.08), radius: 16, y: 8)
+
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .strokeBorder(.quaternary, lineWidth: 1)
+
+            VStack(spacing: 16) {
+                Text(title)
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.secondary)
+                    .textCase(.uppercase)
+
+                Spacer()
+
+                Text(text)
+                    .font(.title3)
+                    .fontWeight(.medium)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
+
+                Spacer()
+            }
+            .padding(28)
+        }
     }
 }

@@ -2,14 +2,6 @@ import SwiftUI
 import SwiftData
 
 struct ExamDetailView: View {
-    private enum Route: Hashable {
-        case summary
-        case flashcardsByTopic
-        case quizByTopic
-        case flashcards(Topic)
-        case quiz(Topic)
-    }
-
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dependencies) private var dependencies
     let exam: Exam
@@ -32,22 +24,6 @@ struct ExamDetailView: View {
         }
         .navigationTitle(exam.title)
         .navigationBarTitleDisplayMode(.inline)
-        .navigationDestination(for: Route.self) { route in
-            switch route {
-            case .summary:
-                SummaryView(summaryText: exam.summaryText)
-            case .flashcardsByTopic:
-                topicFlashcardsPicker(topics: sortedTopics)
-            case .quizByTopic:
-                topicQuizPicker(topics: sortedTopics)
-            case .flashcards(let topic):
-                FlashcardView(viewModel: FlashcardViewModel(flashcards: topic.flashcards))
-                    .navigationTitle(topic.title)
-            case .quiz(let topic):
-                QuizView(viewModel: QuizViewModel(questions: topic.questions))
-                    .navigationTitle(topic.title)
-            }
-        }
         .onAppear {
             if viewModel == nil {
                 viewModel = ExamDetailViewModel(
@@ -140,13 +116,17 @@ struct ExamDetailView: View {
     private var studyMaterialsSection: some View {
         Section("Study Materials") {
             if !exam.summaryText.isEmpty {
-                NavigationLink(value: Route.summary) {
+                NavigationLink {
+                    SummaryView(summaryText: exam.summaryText, topics: sortedTopics)
+                } label: {
                     Label("Summary", systemImage: "doc.text")
                 }
             }
 
             if !sortedTopics.isEmpty {
-                NavigationLink(value: Route.flashcardsByTopic) {
+                NavigationLink {
+                    topicFlashcardsPicker(topics: sortedTopics)
+                } label: {
                     Label {
                         HStack {
                             Text("Flashcards")
@@ -161,7 +141,9 @@ struct ExamDetailView: View {
                     }
                 }
 
-                NavigationLink(value: Route.quizByTopic) {
+                NavigationLink {
+                    topicQuizPicker(topics: sortedTopics)
+                } label: {
                     Label {
                         HStack {
                             Text("Quiz")
@@ -182,7 +164,10 @@ struct ExamDetailView: View {
 
     private func topicFlashcardsPicker(topics: [Topic]) -> some View {
         List(topics, id: \.id) { topic in
-            NavigationLink(value: Route.flashcards(topic)) {
+            NavigationLink {
+                FlashcardView(viewModel: FlashcardViewModel(flashcards: topic.flashcards))
+                    .navigationTitle(topic.title)
+            } label: {
                 HStack {
                     Text(topic.title)
                     Spacer()
@@ -196,7 +181,10 @@ struct ExamDetailView: View {
 
     private func topicQuizPicker(topics: [Topic]) -> some View {
         List(topics, id: \.id) { topic in
-            NavigationLink(value: Route.quiz(topic)) {
+            NavigationLink {
+                QuizView(viewModel: QuizViewModel(questions: topic.questions))
+                    .navigationTitle(topic.title)
+            } label: {
                 HStack {
                     Text(topic.title)
                     Spacer()

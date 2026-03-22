@@ -11,38 +11,52 @@ struct FlashcardViewModelTests {
         ]
     }
 
-    @Test func markLearnedAdvancesAndSetsFlag() {
+    @Test func easyReviewAdvancesAndSetsFlag() {
         let cards = makeCards()
         let vm = FlashcardViewModel(flashcards: cards)
         vm.flip()
-        vm.markLearned()
+        vm.review(.easy)
         #expect(cards[0].isLearned == true)
+        #expect(cards[0].reviewCount == 1)
         #expect(vm.currentIndex == 1)
     }
 
-    @Test func markNotLearnedAdvancesWithoutFlag() {
+    @Test func againReviewAdvancesWithoutFlag() {
         let cards = makeCards()
         let vm = FlashcardViewModel(flashcards: cards)
         vm.flip()
-        vm.markNotLearned()
+        vm.review(.again)
         #expect(cards[0].isLearned == false)
+        #expect(cards[0].difficultyScore == 1)
         #expect(vm.currentIndex == 1)
+    }
+
+    @Test func hardReviewIncreasesDifficulty() {
+        let cards = makeCards()
+        let vm = FlashcardViewModel(flashcards: cards)
+
+        vm.flip()
+        vm.review(.hard)
+
+        #expect(cards[0].isLearned == false)
+        #expect(cards[0].difficultyScore == 0.5)
+        #expect(cards[0].reviewCount == 1)
     }
 
     @Test func learnedCountTracksCorrectly() {
         let cards = makeCards()
         let vm = FlashcardViewModel(flashcards: cards)
-        vm.markLearned()
-        vm.markLearned()
+        vm.review(.easy)
+        vm.review(.easy)
         #expect(vm.learnedCount == 2)
     }
 
     @Test func finishesAfterAllCardsProcessed() {
         let cards = makeCards()
         let vm = FlashcardViewModel(flashcards: cards)
-        vm.markLearned()
-        vm.markNotLearned()
-        vm.markLearned()
+        vm.review(.easy)
+        vm.review(.again)
+        vm.review(.easy)
         #expect(vm.isFinished == true)
     }
 }

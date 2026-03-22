@@ -1,10 +1,6 @@
 import SwiftUI
 
 struct ExamSetupView: View {
-    private enum Route: Hashable {
-        case documentUpload
-    }
-
     @Environment(\.dismiss) private var dismiss
     @State private var viewModel = ExamSetupViewModel()
 
@@ -25,7 +21,12 @@ struct ExamSetupView: View {
                 Text("Continue to upload your PDF, DOCX, or PPTX study materials.")
                     .foregroundStyle(.secondary)
 
-                NavigationLink(value: Route.documentUpload) {
+                NavigationLink {
+                    DocumentUploadView(
+                        presetTitle: viewModel.examTitle,
+                        presetExamDate: viewModel.examDate
+                    )
+                } label: {
                     Text("Continue to Upload")
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
@@ -34,15 +35,6 @@ struct ExamSetupView: View {
         }
         .navigationTitle("Exam Setup")
         .navigationBarTitleDisplayMode(.inline)
-        .navigationDestination(for: Route.self) { route in
-            switch route {
-            case .documentUpload:
-                DocumentUploadView(
-                    presetTitle: viewModel.examTitle,
-                    presetExamDate: viewModel.examDate
-                )
-            }
-        }
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
                 Button("Close") { dismiss() }

@@ -3,6 +3,12 @@ import Observation
 
 @Observable
 final class FlashcardViewModel {
+    enum ReviewRating {
+        case again
+        case hard
+        case easy
+    }
+
     var currentIndex = 0
     var isShowingBack = false
 
@@ -34,14 +40,33 @@ final class FlashcardViewModel {
         isShowingBack.toggle()
     }
 
-    func markLearned() {
-        currentCard?.isLearned = true
+    func review(_ rating: ReviewRating) {
+        guard let card = currentCard else { return }
+
+        card.reviewCount += 1
+        card.lastReviewedAt = .now
+
+        switch rating {
+        case .again:
+            card.isLearned = false
+            card.difficultyScore = min(card.difficultyScore + 1, 5)
+        case .hard:
+            card.isLearned = false
+            card.difficultyScore = min(card.difficultyScore + 0.5, 5)
+        case .easy:
+            card.isLearned = true
+            card.difficultyScore = max(card.difficultyScore - 0.5, 0)
+        }
+
         advance()
     }
 
+    func markLearned() {
+        review(.easy)
+    }
+
     func markNotLearned() {
-        currentCard?.isLearned = false
-        advance()
+        review(.again)
     }
 
     func restart() {
