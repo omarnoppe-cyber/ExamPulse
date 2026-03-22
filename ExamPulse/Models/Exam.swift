@@ -15,16 +15,20 @@ final class Exam {
     var title: String
     var examDate: Date
     var createdAt: Date
+    var dailyQuestionGoal: Int
     var statusRaw: String
 
-    @Relationship(deleteRule: .cascade, inverse: \Document.exam)
-    var documents: [Document]
-
-    @Relationship(deleteRule: .cascade, inverse: \Summary.exam)
-    var summary: Summary?
+    @Relationship(deleteRule: .cascade, inverse: \StudyDocument.exam)
+    var studyDocuments: [StudyDocument]
 
     @Relationship(deleteRule: .cascade, inverse: \Topic.exam)
     var topics: [Topic]
+
+    @Relationship(deleteRule: .cascade, inverse: \Flashcard.exam)
+    var flashcards: [Flashcard]
+
+    @Relationship(deleteRule: .cascade, inverse: \Question.exam)
+    var questions: [Question]
 
     var status: ExamStatus {
         get { ExamStatus(rawValue: statusRaw) ?? .new }
@@ -35,13 +39,29 @@ final class Exam {
         Calendar.current.dateComponents([.day], from: .now, to: examDate).day ?? 0
     }
 
-    init(title: String, examDate: Date) {
-        self.id = UUID()
+    var summaryText: String {
+        studyDocuments
+            .map(\.summary)
+            .first(where: { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty })
+            ?? ""
+    }
+
+    init(
+        id: UUID = UUID(),
+        title: String,
+        examDate: Date,
+        createdAt: Date = Date(),
+        dailyQuestionGoal: Int = 10
+    ) {
+        self.id = id
         self.title = title
         self.examDate = examDate
-        self.createdAt = Date()
+        self.createdAt = createdAt
+        self.dailyQuestionGoal = dailyQuestionGoal
         self.statusRaw = ExamStatus.new.rawValue
-        self.documents = []
+        self.studyDocuments = []
         self.topics = []
+        self.flashcards = []
+        self.questions = []
     }
 }

@@ -1,12 +1,12 @@
 import SwiftUI
 
 struct SummaryView: View {
-    let summary: Summary
+    let summaryText: String
     @State private var viewModel: SummaryViewModel
 
-    init(summary: Summary) {
-        self.summary = summary
-        _viewModel = State(initialValue: SummaryViewModel(summaryText: summary.content))
+    init(summaryText: String) {
+        self.summaryText = summaryText
+        _viewModel = State(initialValue: SummaryViewModel(summaryText: summaryText))
     }
 
     var body: some View {

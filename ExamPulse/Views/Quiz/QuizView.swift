@@ -31,9 +31,9 @@ struct QuizView: View {
         }
     }
 
-    private func questionCard(_ question: QuizQuestion) -> some View {
+    private func questionCard(_ question: Question) -> some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text(question.question)
+            Text(question.prompt)
                 .font(.title3)
                 .fontWeight(.semibold)
                 .fixedSize(horizontal: false, vertical: true)

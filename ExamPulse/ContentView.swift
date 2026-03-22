@@ -2,9 +2,22 @@ import SwiftUI
 import SwiftData
 
 struct ContentView: View {
+    @AppStorage("hasSeenOnboarding") private var hasSeenOnboarding = false
     @State private var coordinator = AppCoordinator()
 
     var body: some View {
+        if hasSeenOnboarding {
+            mainTabs
+        } else {
+            NavigationStack {
+                OnboardingView {
+                    hasSeenOnboarding = true
+                }
+            }
+        }
+    }
+
+    private var mainTabs: some View {
         TabView(selection: $coordinator.selectedTab) {
             HomeView()
                 .tabItem {

@@ -3,11 +3,11 @@ import Foundation
 @testable import ExamPulse
 
 struct QuizViewModelTests {
-    private func makeQuestions() -> [QuizQuestion] {
+    private func makeQuestions() -> [Question] {
         [
-            QuizQuestion(question: "What is 1+1?", optionA: "1", optionB: "2", optionC: "3", optionD: "4", correctAnswer: "2"),
-            QuizQuestion(question: "What is 2+2?", optionA: "3", optionB: "4", optionC: "5", optionD: "6", correctAnswer: "4"),
-            QuizQuestion(question: "What is 3+3?", optionA: "5", optionB: "6", optionC: "7", optionD: "8", correctAnswer: "6")
+            Question(examId: UUID(), topicId: UUID(), prompt: "What is 1+1?", options: ["1", "2", "3", "4"], correctAnswer: "2", explanation: "", type: "multipleChoice"),
+            Question(examId: UUID(), topicId: UUID(), prompt: "What is 2+2?", options: ["3", "4", "5", "6"], correctAnswer: "4", explanation: "", type: "multipleChoice"),
+            Question(examId: UUID(), topicId: UUID(), prompt: "What is 3+3?", options: ["5", "6", "7", "8"], correctAnswer: "6", explanation: "", type: "multipleChoice")
         ]
     }
 

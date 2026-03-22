@@ -2,20 +2,32 @@ import SwiftUI
 import SwiftData
 
 struct HomeView: View {
+    private enum Route: Hashable {
+        case createExam
+        case uploadDocument
+        case examDetail(Exam)
+    }
+
     @Query(sort: \Exam.examDate) private var exams: [Exam]
+    @State private var path: [Route] = []
     @State private var viewModel = HomeViewModel()
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             List {
                 heroSection
                 quickActionsSection
                 upcomingExamsSection
             }
             .navigationTitle("ExamPulse")
-            .sheet(isPresented: $viewModel.isShowingExamSetup) {
-                NavigationStack {
+            .navigationDestination(for: Route.self) { route in
+                switch route {
+                case .createExam:
                     ExamSetupView()
+                case .uploadDocument:
+                    DocumentUploadView()
+                case .examDetail(let exam):
+                    ExamDetailView(exam: exam)
                 }
             }
         }
@@ -37,15 +49,11 @@ struct HomeView: View {
 
     private var quickActionsSection: some View {
         Section("Quick Actions") {
-            Button {
-                viewModel.isShowingExamSetup = true
-            } label: {
+            NavigationLink(value: Route.createExam) {
                 Label("Create New Exam", systemImage: "plus.circle.fill")
             }
 
-            NavigationLink {
-                DocumentUploadView()
-            } label: {
+            NavigationLink(value: Route.uploadDocument) {
                 Label("Upload Study Documents", systemImage: "doc.badge.plus")
             }
         }
@@ -61,9 +69,7 @@ struct HomeView: View {
                 )
             } else {
                 ForEach(exams.prefix(5)) { exam in
-                    NavigationLink {
-                        ExamDetailView(exam: exam)
-                    } label: {
+                    NavigationLink(value: Route.examDetail(exam)) {
                         ExamRowView(exam: exam)
                     }
                 }

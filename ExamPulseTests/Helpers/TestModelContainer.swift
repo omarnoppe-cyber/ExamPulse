@@ -7,11 +7,11 @@ enum TestModelContainer {
     static func create() throws -> ModelContainer {
         let schema = Schema([
             Exam.self,
-            Document.self,
-            Summary.self,
+            StudyDocument.self,
             Topic.self,
             Flashcard.self,
-            QuizQuestion.self,
+            Question.self,
+            AnswerAttempt.self,
         ])
         let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
         return try ModelContainer(for: schema, configurations: [config])

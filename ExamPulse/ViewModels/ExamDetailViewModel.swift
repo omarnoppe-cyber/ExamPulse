@@ -19,7 +19,7 @@ final class ExamDetailViewModel {
     func generateStudyMaterials(for exam: Exam, context: ModelContext) async {
         guard !isGenerating else { return }
 
-        let combinedText = exam.documents
+        let combinedText = exam.studyDocuments
             .map(\.rawText)
             .joined(separator: "\n\n")
 
@@ -38,13 +38,18 @@ final class ExamDetailViewModel {
 
             let (summaryText, topicDTOs) = try await (summaryTask, topicsTask)
 
-            let summary = Summary(content: summaryText)
-            summary.exam = exam
-            context.insert(summary)
+            for document in exam.studyDocuments {
+                document.summary = summaryText
+            }
 
             var createdTopics: [Topic] = []
             for (index, dto) in topicDTOs.enumerated() {
-                let topic = Topic(title: dto.title, sortOrder: index)
+                let topic = Topic(
+                    examId: exam.id,
+                    title: dto.title,
+                    masteryScore: 0,
+                    sortOrder: index
+                )
                 topic.exam = exam
                 context.insert(topic)
                 createdTopics.append(topic)
@@ -61,20 +66,28 @@ final class ExamDetailViewModel {
                 let (flashcardDTOs, quizDTOs) = try await (flashcardsTask, quizTask)
 
                 for dto in flashcardDTOs {
-                    let card = Flashcard(front: dto.front, back: dto.back)
+                    let card = Flashcard(
+                        examId: exam.id,
+                        topicId: topic.id,
+                        front: dto.front,
+                        back: dto.back
+                    )
+                    card.exam = exam
                     card.topic = topic
                     context.insert(card)
                 }
 
                 for dto in quizDTOs {
-                    let q = QuizQuestion(
-                        question: dto.question,
-                        optionA: dto.optionA,
-                        optionB: dto.optionB,
-                        optionC: dto.optionC,
-                        optionD: dto.optionD,
-                        correctAnswer: dto.correctAnswer
+                    let q = Question(
+                        examId: exam.id,
+                        topicId: topic.id,
+                        prompt: dto.question,
+                        options: [dto.optionA, dto.optionB, dto.optionC, dto.optionD],
+                        correctAnswer: dto.correctAnswer,
+                        explanation: "",
+                        type: "multipleChoice"
                     )
+                    q.exam = exam
                     q.topic = topic
                     context.insert(q)
                 }

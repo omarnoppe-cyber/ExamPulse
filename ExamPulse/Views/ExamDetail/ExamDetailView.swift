@@ -2,6 +2,14 @@ import SwiftUI
 import SwiftData
 
 struct ExamDetailView: View {
+    private enum Route: Hashable {
+        case summary
+        case flashcardsByTopic
+        case quizByTopic
+        case flashcards(Topic)
+        case quiz(Topic)
+    }
+
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dependencies) private var dependencies
     let exam: Exam
@@ -24,6 +32,22 @@ struct ExamDetailView: View {
         }
         .navigationTitle(exam.title)
         .navigationBarTitleDisplayMode(.inline)
+        .navigationDestination(for: Route.self) { route in
+            switch route {
+            case .summary:
+                SummaryView(summaryText: exam.summaryText)
+            case .flashcardsByTopic:
+                topicFlashcardsPicker(topics: sortedTopics)
+            case .quizByTopic:
+                topicQuizPicker(topics: sortedTopics)
+            case .flashcards(let topic):
+                FlashcardView(viewModel: FlashcardViewModel(flashcards: topic.flashcards))
+                    .navigationTitle(topic.title)
+            case .quiz(let topic):
+                QuizView(viewModel: QuizViewModel(questions: topic.questions))
+                    .navigationTitle(topic.title)
+            }
+        }
         .onAppear {
             if viewModel == nil {
                 viewModel = ExamDetailViewModel(
@@ -55,7 +79,7 @@ struct ExamDetailView: View {
             HStack {
                 Label("Documents", systemImage: "doc.on.doc")
                 Spacer()
-                Text("\(exam.documents.count)")
+                Text("\(exam.studyDocuments.count)")
                     .foregroundStyle(.secondary)
             }
         }
@@ -115,19 +139,14 @@ struct ExamDetailView: View {
 
     private var studyMaterialsSection: some View {
         Section("Study Materials") {
-            if let summary = exam.summary {
-                NavigationLink {
-                    SummaryView(summary: summary)
-                } label: {
+            if !exam.summaryText.isEmpty {
+                NavigationLink(value: Route.summary) {
                     Label("Summary", systemImage: "doc.text")
                 }
             }
 
-            let sortedTopics = exam.topics.sorted { $0.sortOrder < $1.sortOrder }
             if !sortedTopics.isEmpty {
-                NavigationLink {
-                    topicFlashcardsPicker(topics: sortedTopics)
-                } label: {
+                NavigationLink(value: Route.flashcardsByTopic) {
                     Label {
                         HStack {
                             Text("Flashcards")
@@ -142,14 +161,12 @@ struct ExamDetailView: View {
                     }
                 }
 
-                NavigationLink {
-                    topicQuizPicker(topics: sortedTopics)
-                } label: {
+                NavigationLink(value: Route.quizByTopic) {
                     Label {
                         HStack {
                             Text("Quiz")
                             Spacer()
-                            let total = sortedTopics.flatMap(\.quizQuestions).count
+                            let total = sortedTopics.flatMap(\.questions).count
                             Text("\(total) questions")
                                 .foregroundStyle(.secondary)
                         }
@@ -165,12 +182,7 @@ struct ExamDetailView: View {
 
     private func topicFlashcardsPicker(topics: [Topic]) -> some View {
         List(topics, id: \.id) { topic in
-            NavigationLink {
-                FlashcardView(
-                    viewModel: FlashcardViewModel(flashcards: topic.flashcards)
-                )
-                .navigationTitle(topic.title)
-            } label: {
+            NavigationLink(value: Route.flashcards(topic)) {
                 HStack {
                     Text(topic.title)
                     Spacer()
@@ -184,20 +196,19 @@ struct ExamDetailView: View {
 
     private func topicQuizPicker(topics: [Topic]) -> some View {
         List(topics, id: \.id) { topic in
-            NavigationLink {
-                QuizView(
-                    viewModel: QuizViewModel(questions: topic.quizQuestions)
-                )
-                .navigationTitle(topic.title)
-            } label: {
+            NavigationLink(value: Route.quiz(topic)) {
                 HStack {
                     Text(topic.title)
                     Spacer()
-                    Text("\(topic.quizQuestions.count) Qs")
+                    Text("\(topic.questions.count) Qs")
                         .foregroundStyle(.secondary)
                 }
             }
         }
         .navigationTitle("Quiz by Topic")
+    }
+
+    private var sortedTopics: [Topic] {
+        exam.topics.sorted { $0.sortOrder < $1.sortOrder }
     }
 }

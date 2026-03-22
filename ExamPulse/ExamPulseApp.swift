@@ -8,11 +8,11 @@ struct ExamPulseApp: App {
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             Exam.self,
-            Document.self,
-            Summary.self,
+            StudyDocument.self,
             Topic.self,
             Flashcard.self,
-            QuizQuestion.self,
+            Question.self,
+            AnswerAttempt.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 

@@ -3,8 +3,6 @@ import Observation
 
 @Observable
 final class HomeViewModel {
-    var isShowingExamSetup = false
-
     func greeting(for date: Date = .now) -> String {
         let hour = Calendar.current.component(.hour, from: date)
 

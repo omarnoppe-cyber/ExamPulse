@@ -11,7 +11,7 @@ struct ExamDetailViewModelTests {
         let exam = Exam(title: "Bio Exam", examDate: Date().addingTimeInterval(86400 * 14))
         context.insert(exam)
 
-        let doc = Document(filename: "notes.pdf", fileURL: "/tmp/notes.pdf", rawText: "Cell biology covers organelles, DNA replication, and protein synthesis.")
+        let doc = StudyDocument(examId: exam.id, fileName: "notes.pdf", rawText: "Cell biology covers organelles, DNA replication, and protein synthesis.")
         doc.exam = exam
         context.insert(doc)
 
@@ -37,7 +37,7 @@ struct ExamDetailViewModelTests {
         let exam = Exam(title: "Fail Exam", examDate: Date().addingTimeInterval(86400 * 14))
         context.insert(exam)
 
-        let doc = Document(filename: "notes.pdf", fileURL: "/tmp/notes.pdf", rawText: "Some content")
+        let doc = StudyDocument(examId: exam.id, fileName: "notes.pdf", rawText: "Some content")
         doc.exam = exam
         context.insert(doc)
 
@@ -81,7 +81,7 @@ struct ExamDetailViewModelTests {
         let exam = Exam(title: "Double Exam", examDate: Date().addingTimeInterval(86400 * 7))
         context.insert(exam)
 
-        let doc = Document(filename: "notes.pdf", fileURL: "/tmp/notes.pdf", rawText: "Content")
+        let doc = StudyDocument(examId: exam.id, fileName: "notes.pdf", rawText: "Content")
         doc.exam = exam
         context.insert(doc)
 

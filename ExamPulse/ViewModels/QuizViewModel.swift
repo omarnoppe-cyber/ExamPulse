@@ -9,9 +9,9 @@ final class QuizViewModel {
     var correctCount = 0
     var answers: [String?]
 
-    let questions: [QuizQuestion]
+    let questions: [Question]
 
-    var currentQuestion: QuizQuestion? {
+    var currentQuestion: Question? {
         guard currentIndex < questions.count else { return nil }
         return questions[currentIndex]
     }
@@ -30,7 +30,7 @@ final class QuizViewModel {
         return Double(currentIndex) / Double(questions.count)
     }
 
-    init(questions: [QuizQuestion]) {
+    init(questions: [Question]) {
         self.questions = questions
         self.answers = Array(repeating: nil, count: questions.count)
     }

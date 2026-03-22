@@ -62,9 +62,9 @@ final class DocumentImportViewModel {
                 let parser = parserFactory(persistedURL)
                 let rawText = try await parser.extractText(from: persistedURL)
 
-                let document = Document(
-                    filename: fileURL.lastPathComponent,
-                    fileURL: persistedURL.path,
+                let document = StudyDocument(
+                    examId: exam.id,
+                    fileName: fileURL.lastPathComponent,
                     rawText: rawText
                 )
                 document.exam = exam
