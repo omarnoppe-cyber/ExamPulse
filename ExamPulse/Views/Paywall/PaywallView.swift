@@ -1,98 +1,144 @@
 import SwiftUI
+import StoreKit
 
 struct PaywallView: View {
-    let onUpgrade: () -> Void
+    @Environment(\.dependencies) private var dependencies
+    @Environment(\.dismiss) private var dismiss
+    var onDismiss: (() -> Void)?
 
-    init(onUpgrade: @escaping () -> Void = {}) {
-        self.onUpgrade = onUpgrade
-    }
+    private var storeService: StoreServicing { dependencies.storeService }
+    private var entitlementManager: EntitlementManaging { dependencies.entitlementManager }
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 24) {
-                header
-                benefitsCard
-                upgradeButton
+            VStack(spacing: 28) {
+                heroHeader
+                comparisonList
+                purchaseButton
+                restoreLink
             }
             .padding(24)
         }
         .background(Color(uiColor: .systemGroupedBackground))
         .navigationTitle("Go Pro")
         .navigationBarTitleDisplayMode(.inline)
-    }
-
-    private var header: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "sparkles.rectangle.stack.fill")
-                .font(.system(size: 44))
-                .foregroundStyle(.blue)
-
-            Text("Unlock ExamPulse Pro")
-                .font(.largeTitle)
-                .fontWeight(.bold)
-                .multilineTextAlignment(.center)
-
-            Text("Get unlimited study tools and stay fully prepared for every exam.")
-                .font(.title3)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
+        .toolbar {
+            if onDismiss != nil {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Skip") { onDismiss?() }
+                }
+            }
         }
-        .frame(maxWidth: .infinity)
-        .padding(.top, 12)
-    }
-
-    private var benefitsCard: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            benefitRow(
-                title: "Unlimited exams",
-                systemImage: "calendar.badge.plus"
-            )
-            benefitRow(
-                title: "Unlimited flashcards",
-                systemImage: "rectangle.on.rectangle.angled"
-            )
-            benefitRow(
-                title: "Unlimited quiz questions",
-                systemImage: "questionmark.circle"
-            )
-            benefitRow(
-                title: "Exam reminders",
-                systemImage: "bell.badge"
-            )
+        .onChange(of: storeService.purchaseState) { _, newState in
+            if newState == .purchased {
+                if let onDismiss { onDismiss() } else { dismiss() }
+            }
         }
-        .padding(20)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(.background)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .strokeBorder(.quaternary, lineWidth: 1)
+    }
+}
+
+// MARK: - Header
+
+private extension PaywallView {
+    var heroHeader: some View {
+        GradientHero(
+            systemImage: "sparkles.rectangle.stack.fill",
+            title: "Unlock ExamPulse Pro",
+            subtitle: "Get unlimited study tools and stay fully prepared for every exam.",
+            gradient: [.blue, .purple]
         )
     }
+}
 
-    private var upgradeButton: some View {
-        Button("Upgrade to Pro") {
-            onUpgrade()
+// MARK: - Comparison
+
+private extension PaywallView {
+    var comparisonList: some View {
+        VStack(spacing: 0) {
+            comparisonRow(feature: "Exams", free: "1", pro: "Unlimited", systemImage: "calendar.badge.plus")
+            thinDivider
+            comparisonRow(feature: "Flashcards / exam", free: "10", pro: "Unlimited", systemImage: "rectangle.on.rectangle.angled")
+            thinDivider
+            comparisonRow(feature: "Questions / exam", free: "5", pro: "Unlimited", systemImage: "questionmark.circle")
+            thinDivider
+            comparisonRow(feature: "Exam reminders", free: "Limited", pro: "Full", systemImage: "bell.badge")
         }
-        .buttonStyle(.borderedProminent)
-        .controlSize(.large)
-        .frame(maxWidth: .infinity)
+        .stadiumCard(padding: 0)
     }
 
-    private func benefitRow(title: String, systemImage: String) -> some View {
+    func comparisonRow(feature: String, free: String, pro: String, systemImage: String) -> some View {
         HStack(spacing: 14) {
-            Image(systemName: systemImage)
-                .font(.title3)
-                .foregroundStyle(.blue)
-                .frame(width: 28)
+            IconCircle(systemImage: systemImage, color: .blue, size: 34)
 
-            Text(title)
-                .font(.headline)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(feature)
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+
+                HStack(spacing: 10) {
+                    Text("Free: \(free)")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+
+                    Text("Pro: \(pro)")
+                        .font(.caption2)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.blue)
+                }
+            }
 
             Spacer()
         }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 14)
+    }
+
+    var thinDivider: some View {
+        Divider().padding(.leading, 66)
+    }
+}
+
+// MARK: - Purchase
+
+private extension PaywallView {
+    var purchaseButton: some View {
+        Button {
+            Task { try? await storeService.purchase() }
+        } label: {
+            Group {
+                if storeService.purchaseState == .purchasing {
+                    HStack(spacing: 8) {
+                        ProgressView()
+                            .controlSize(.small)
+                            .tint(.white)
+                        Text("Purchasing...")
+                    }
+                } else {
+                    Text(buttonTitle)
+                }
+            }
+            .fontWeight(.semibold)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 6)
+        }
+        .buttonStyle(.borderedProminent)
+        .controlSize(.large)
+        .disabled(storeService.purchaseState == .purchasing)
+    }
+
+    var buttonTitle: String {
+        if let product = storeService.product {
+            return "Upgrade to Pro — \(product.displayPrice)"
+        }
+        return "Upgrade to Pro"
+    }
+
+    var restoreLink: some View {
+        Button("Restore Purchases") {
+            Task { await storeService.restorePurchases() }
+        }
+        .font(.subheadline)
+        .foregroundStyle(.secondary)
     }
 }
 
@@ -100,4 +146,5 @@ struct PaywallView: View {
     NavigationStack {
         PaywallView()
     }
+    .environment(\.dependencies, DependencyContainer())
 }

@@ -18,120 +18,143 @@ struct ProgressDashboardView: View {
         .background(Color(uiColor: .systemGroupedBackground))
         .navigationTitle("Progress")
     }
+}
 
-    private var accuracySection: some View {
-        progressCard(
-            title: "Accuracy Percentage",
-            value: "\(viewModel.accuracyPercentage(in: exams))%",
+// MARK: - Accuracy
+
+private extension ProgressDashboardView {
+    var accuracySection: some View {
+        let accuracy = viewModel.accuracyPercentage(in: exams)
+        return metricCard(
+            title: "Accuracy",
+            value: "\(accuracy)%",
             systemImage: "target",
             color: .blue,
-            progress: Double(viewModel.accuracyPercentage(in: exams)) / 100
-        ) {
-            Text("Based on answered quiz questions.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-        }
+            progress: Double(accuracy) / 100,
+            detail: "Based on answered quiz questions"
+        )
     }
+}
 
-    private var flashcardsSection: some View {
-        progressCard(
+// MARK: - Flashcards
+
+private extension ProgressDashboardView {
+    var flashcardsSection: some View {
+        let reviewed = viewModel.flashcardsReviewed(in: exams)
+        let total = viewModel.totalFlashcards(in: exams)
+        return metricCard(
             title: "Flashcards Reviewed",
-            value: "\(viewModel.flashcardsReviewed(in: exams))",
+            value: "\(reviewed)",
             systemImage: "rectangle.on.rectangle.angled",
             color: .orange,
-            progress: viewModel.flashcardsReviewedProgress(in: exams)
-        ) {
-            Text("\(exams.flatMap(\.flashcards).filter { $0.reviewCount > 0 }.count) of \(viewModel.totalFlashcards(in: exams)) cards reviewed at least once")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-        }
+            progress: viewModel.flashcardsReviewedProgress(in: exams),
+            detail: "\(reviewed) of \(total) cards reviewed at least once"
+        )
     }
+}
 
-    private var weakTopicsSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
+// MARK: - Weak Topics
+
+private extension ProgressDashboardView {
+    var weakTopicsSection: some View {
+        let topics = Array(viewModel.weakTopics(in: exams).prefix(3))
+        return VStack(alignment: .leading, spacing: 16) {
             Label("Weak Topics", systemImage: "exclamationmark.triangle.fill")
                 .font(.headline)
                 .foregroundStyle(.red)
 
-            let weakTopics = Array(viewModel.weakTopics(in: exams).prefix(3))
-            if weakTopics.isEmpty {
+            if topics.isEmpty {
                 Text("Weak topics will appear here after you start reviewing flashcards or answering quiz questions.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             } else {
-                ForEach(weakTopics, id: \.id) { topic in
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Text(topic.title)
-                                .fontWeight(.semibold)
-                            Spacer()
-                            Text("\(Int(viewModel.topicWeaknessScore(topic) * 100))% weak")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-
-                        ProgressView(value: viewModel.topicWeaknessScore(topic))
-                            .tint(.red)
-                    }
+                ForEach(topics, id: \.id) { topic in
+                    weakTopicRow(topic)
                 }
             }
         }
-        .padding(18)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(cardBackground)
+        .stadiumCard()
     }
 
-    private var daysRemainingSection: some View {
-        progressCard(
-            title: "Days Remaining",
-            value: viewModel.daysRemaining(in: exams).map { "\($0)" } ?? "--",
-            systemImage: "calendar",
-            color: .green,
-            progress: viewModel.daysRemainingProgress(in: exams)
-        ) {
-            Text(viewModel.daysRemaining(in: exams).map { _ in "Until your next exam" } ?? "Create an exam to track time remaining")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+    func weakTopicRow(_ topic: Topic) -> some View {
+        let score = viewModel.topicWeaknessScore(topic)
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(topic.title)
+                    .fontWeight(.semibold)
+                Spacer()
+                Text("\(Int(score * 100))% weak")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            capsuleProgress(value: score, tint: .red)
         }
     }
+}
 
-    private func progressCard<Content: View>(
+// MARK: - Days Remaining
+
+private extension ProgressDashboardView {
+    var daysRemainingSection: some View {
+        let days = viewModel.daysRemaining(in: exams)
+        return metricCard(
+            title: "Days Remaining",
+            value: days.map { "\($0)" } ?? "--",
+            systemImage: "calendar",
+            color: .green,
+            progress: viewModel.daysRemainingProgress(in: exams),
+            detail: days != nil ? "Until your next exam" : "Create an exam to track time remaining"
+        )
+    }
+}
+
+// MARK: - Reusable Card
+
+private extension ProgressDashboardView {
+    func metricCard(
         title: String,
         value: String,
         systemImage: String,
         color: Color,
         progress: Double,
-        @ViewBuilder content: () -> Content
+        detail: String
     ) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Label(title, systemImage: systemImage)
-                    .font(.headline)
-                    .foregroundStyle(color)
-
+                IconCircle(systemImage: systemImage, color: color, size: 36)
+                Text(title)
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
                 Spacer()
-
                 Text(value)
-                    .font(.title3)
+                    .font(.title2)
                     .fontWeight(.bold)
+                    .monospacedDigit()
             }
 
-            ProgressView(value: min(max(progress, 0), 1))
-                .tint(color)
+            capsuleProgress(value: progress, tint: color)
 
-            content()
+            Text(detail)
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
-        .padding(18)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(cardBackground)
+        .stadiumCard()
     }
 
-    private var cardBackground: some View {
-        RoundedRectangle(cornerRadius: 18, style: .continuous)
-            .fill(.background)
-            .overlay(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .strokeBorder(.quaternary, lineWidth: 1)
-            )
+    func capsuleProgress(value: Double, tint: Color) -> some View {
+        GeometryReader { geo in
+            let clamped = min(max(value, 0), 1)
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(tint.opacity(0.12))
+
+                Capsule()
+                    .fill(tint.gradient)
+                    .frame(width: geo.size.width * clamped)
+                    .animation(.easeInOut(duration: 0.5), value: clamped)
+            }
+        }
+        .frame(height: 8)
+        .clipShape(Capsule())
     }
 }

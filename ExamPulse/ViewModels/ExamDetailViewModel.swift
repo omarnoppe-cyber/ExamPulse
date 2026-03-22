@@ -9,10 +9,16 @@ final class ExamDetailViewModel {
 
     private let generator: StudyContentGenerating
     let apiKeyManager: APIKeyManaging
+    private let entitlementManager: EntitlementManaging
 
-    init(generator: StudyContentGenerating, apiKeyManager: APIKeyManaging) {
+    init(
+        generator: StudyContentGenerating,
+        apiKeyManager: APIKeyManaging,
+        entitlementManager: EntitlementManaging
+    ) {
         self.generator = generator
         self.apiKeyManager = apiKeyManager
+        self.entitlementManager = entitlementManager
     }
 
     @MainActor
@@ -35,6 +41,9 @@ final class ExamDetailViewModel {
         do {
             let content = try await generator.generateFromText(combinedText)
             applyContent(content, to: exam, context: context)
+            if !entitlementManager.isPro {
+                enforceFreeLimits(on: exam, context: context)
+            }
             exam.status = .ready
         } catch {
             exam.status = .error
@@ -85,6 +94,30 @@ final class ExamDetailViewModel {
                 q.exam = exam
                 q.topic = topic
                 context.insert(q)
+            }
+        }
+    }
+
+    @MainActor
+    private func enforceFreeLimits(on exam: Exam, context: ModelContext) {
+        let maxFlashcards = entitlementManager.maxFreeFlashcardsPerExam
+        let maxQuestions = entitlementManager.maxFreeQuestionsPerExam
+
+        if exam.flashcards.count > maxFlashcards {
+            let excess = exam.flashcards
+                .sorted { $0.front < $1.front }
+                .dropFirst(maxFlashcards)
+            for card in excess {
+                context.delete(card)
+            }
+        }
+
+        if exam.questions.count > maxQuestions {
+            let excess = exam.questions
+                .sorted { $0.prompt < $1.prompt }
+                .dropFirst(maxQuestions)
+            for question in excess {
+                context.delete(question)
             }
         }
     }

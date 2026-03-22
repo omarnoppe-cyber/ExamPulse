@@ -16,7 +16,11 @@ struct ExamDetailViewModelTests {
         context.insert(doc)
 
         let mockGenerator = MockStudyContentGenerator()
-        let vm = ExamDetailViewModel(generator: mockGenerator, apiKeyManager: MockAPIKeyManager(apiKey: "sk-test"))
+        let vm = ExamDetailViewModel(
+            generator: mockGenerator,
+            apiKeyManager: MockAPIKeyManager(apiKey: "sk-test"),
+            entitlementManager: MockEntitlementManager(isPro: true)
+        )
 
         await vm.generateStudyMaterials(for: exam, context: context)
 
@@ -42,7 +46,8 @@ struct ExamDetailViewModelTests {
 
         let vm = ExamDetailViewModel(
             generator: mockGenerator,
-            apiKeyManager: MockAPIKeyManager()
+            apiKeyManager: MockAPIKeyManager(),
+            entitlementManager: MockEntitlementManager(isPro: true)
         )
 
         await vm.generateStudyMaterials(for: exam, context: context)
@@ -61,7 +66,8 @@ struct ExamDetailViewModelTests {
 
         let vm = ExamDetailViewModel(
             generator: MockStudyContentGenerator(),
-            apiKeyManager: MockAPIKeyManager()
+            apiKeyManager: MockAPIKeyManager(),
+            entitlementManager: MockEntitlementManager(isPro: true)
         )
 
         await vm.generateStudyMaterials(for: exam, context: context)
@@ -84,7 +90,8 @@ struct ExamDetailViewModelTests {
         let mockGenerator = MockStudyContentGenerator()
         let vm = ExamDetailViewModel(
             generator: mockGenerator,
-            apiKeyManager: MockAPIKeyManager()
+            apiKeyManager: MockAPIKeyManager(),
+            entitlementManager: MockEntitlementManager(isPro: true)
         )
 
         vm.isGenerating = true

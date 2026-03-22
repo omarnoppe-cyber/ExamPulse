@@ -29,6 +29,7 @@ struct ExamPulseApp: App {
                 .environment(\.dependencies, dependencies)
                 .task {
                     _ = try? await dependencies.notificationService.requestAuthorization()
+                    await dependencies.storeService.loadProduct()
                 }
         }
         .modelContainer(sharedModelContainer)

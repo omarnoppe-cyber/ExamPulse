@@ -10,17 +10,8 @@ struct ExamDetailView: View {
 
     var body: some View {
         List {
-            examInfoSection
-
-            if exam.status == .ready {
-                studyMaterialsSection
-            } else if exam.status == .new {
-                generateSection
-            } else if exam.status == .generating {
-                generatingSection
-            } else if exam.status == .error {
-                errorSection
-            }
+            infoSection
+            statusSection
         }
         .navigationTitle(exam.title)
         .navigationBarTitleDisplayMode(.inline)
@@ -28,45 +19,52 @@ struct ExamDetailView: View {
             if viewModel == nil {
                 viewModel = ExamDetailViewModel(
                     generator: dependencies.studyContentGenerator,
-                    apiKeyManager: dependencies.apiKeyManager
+                    apiKeyManager: dependencies.apiKeyManager,
+                    entitlementManager: dependencies.entitlementManager
                 )
             }
         }
     }
+}
 
-    // MARK: - Sections
+// MARK: - Info
 
-    private var examInfoSection: some View {
+private extension ExamDetailView {
+    var infoSection: some View {
         Section {
-            HStack {
-                Label("Exam Date", systemImage: "calendar")
-                Spacer()
-                Text(exam.examDate.shortFormatted)
-                    .foregroundStyle(.secondary)
-            }
-
-            HStack {
-                Label("Time Left", systemImage: "clock")
-                Spacer()
-                Text(exam.examDate.relativeDayDescription)
-                    .foregroundStyle(.secondary)
-            }
-
-            HStack {
-                Label("Documents", systemImage: "doc.on.doc")
-                Spacer()
-                Text("\(exam.studyDocuments.count)")
-                    .foregroundStyle(.secondary)
-            }
+            infoRow("Exam Date", systemImage: "calendar", value: exam.examDate.shortFormatted)
+            infoRow("Time Left", systemImage: "clock", value: exam.examDate.relativeDayDescription)
+            infoRow("Documents", systemImage: "doc.on.doc", value: "\(exam.studyDocuments.count)")
         }
     }
 
-    private var generateSection: some View {
+    func infoRow(_ title: String, systemImage: String, value: String) -> some View {
+        HStack {
+            Label(title, systemImage: systemImage)
+            Spacer()
+            Text(value).foregroundStyle(.secondary)
+        }
+    }
+}
+
+// MARK: - Status-dependent section
+
+private extension ExamDetailView {
+    @ViewBuilder
+    var statusSection: some View {
+        switch exam.status {
+        case .ready: studyMaterialsSection
+        case .new: generateSection
+        case .generating: generatingSection
+        case .error: errorSection
+        case .parsing: generatingSection
+        }
+    }
+
+    var generateSection: some View {
         Section {
             Button {
-                Task {
-                    await viewModel?.generateStudyMaterials(for: exam, context: modelContext)
-                }
+                Task { await viewModel?.generateStudyMaterials(for: exam, context: modelContext) }
             } label: {
                 Label("Generate Study Materials", systemImage: "sparkles")
                     .frame(maxWidth: .infinity, alignment: .center)
@@ -80,11 +78,10 @@ struct ExamDetailView: View {
         }
     }
 
-    private var generatingSection: some View {
+    var generatingSection: some View {
         Section {
             HStack {
-                ProgressView()
-                    .controlSize(.small)
+                ProgressView().controlSize(.small)
                 Text("Generating study materials...")
                     .foregroundStyle(.secondary)
             }
@@ -93,18 +90,15 @@ struct ExamDetailView: View {
         }
     }
 
-    private var errorSection: some View {
+    var errorSection: some View {
         Section {
             VStack(spacing: 12) {
                 if let error = viewModel?.errorMessage {
                     Label(error, systemImage: "exclamationmark.triangle")
                         .foregroundStyle(.red)
                 }
-
                 Button("Retry") {
-                    Task {
-                        await viewModel?.generateStudyMaterials(for: exam, context: modelContext)
-                    }
+                    Task { await viewModel?.generateStudyMaterials(for: exam, context: modelContext) }
                 }
                 .buttonStyle(.borderedProminent)
             }
@@ -112,8 +106,16 @@ struct ExamDetailView: View {
             .padding(.vertical, 8)
         }
     }
+}
 
-    private var studyMaterialsSection: some View {
+// MARK: - Study Materials
+
+private extension ExamDetailView {
+    var sortedTopics: [Topic] {
+        exam.topics.sorted { $0.sortOrder < $1.sortOrder }
+    }
+
+    var studyMaterialsSection: some View {
         Section("Study Materials") {
             if !exam.summaryText.isEmpty {
                 NavigationLink {
@@ -124,45 +126,52 @@ struct ExamDetailView: View {
             }
 
             if !sortedTopics.isEmpty {
-                NavigationLink {
-                    topicFlashcardsPicker(topics: sortedTopics)
-                } label: {
-                    Label {
-                        HStack {
-                            Text("Flashcards")
-                            Spacer()
-                            let total = sortedTopics.flatMap(\.flashcards).count
-                            let learned = sortedTopics.flatMap(\.flashcards).filter(\.isLearned).count
-                            Text("\(learned)/\(total)")
-                                .foregroundStyle(.secondary)
-                        }
-                    } icon: {
-                        Image(systemName: "rectangle.on.rectangle.angled")
-                    }
-                }
-
-                NavigationLink {
-                    topicQuizPicker(topics: sortedTopics)
-                } label: {
-                    Label {
-                        HStack {
-                            Text("Quiz")
-                            Spacer()
-                            let total = sortedTopics.flatMap(\.questions).count
-                            Text("\(total) questions")
-                                .foregroundStyle(.secondary)
-                        }
-                    } icon: {
-                        Image(systemName: "questionmark.circle")
-                    }
-                }
+                flashcardsRow
+                quizRow
             }
         }
     }
 
-    // MARK: - Topic pickers
+    var flashcardsRow: some View {
+        NavigationLink {
+            topicFlashcardsPicker(topics: sortedTopics)
+        } label: {
+            Label {
+                HStack {
+                    Text("Flashcards")
+                    Spacer()
+                    let all = sortedTopics.flatMap(\.flashcards)
+                    Text("\(all.filter(\.isLearned).count)/\(all.count)")
+                        .foregroundStyle(.secondary)
+                }
+            } icon: {
+                Image(systemName: "rectangle.on.rectangle.angled")
+            }
+        }
+    }
 
-    private func topicFlashcardsPicker(topics: [Topic]) -> some View {
+    var quizRow: some View {
+        NavigationLink {
+            topicQuizPicker(topics: sortedTopics)
+        } label: {
+            Label {
+                HStack {
+                    Text("Quiz")
+                    Spacer()
+                    Text("\(sortedTopics.flatMap(\.questions).count) questions")
+                        .foregroundStyle(.secondary)
+                }
+            } icon: {
+                Image(systemName: "questionmark.circle")
+            }
+        }
+    }
+}
+
+// MARK: - Topic Pickers
+
+private extension ExamDetailView {
+    func topicFlashcardsPicker(topics: [Topic]) -> some View {
         List(topics, id: \.id) { topic in
             NavigationLink {
                 FlashcardView(viewModel: FlashcardViewModel(flashcards: topic.flashcards))
@@ -179,7 +188,7 @@ struct ExamDetailView: View {
         .navigationTitle("Flashcards by Topic")
     }
 
-    private func topicQuizPicker(topics: [Topic]) -> some View {
+    func topicQuizPicker(topics: [Topic]) -> some View {
         List(topics, id: \.id) { topic in
             NavigationLink {
                 QuizView(viewModel: QuizViewModel(questions: topic.questions))
@@ -194,9 +203,5 @@ struct ExamDetailView: View {
             }
         }
         .navigationTitle("Quiz by Topic")
-    }
-
-    private var sortedTopics: [Topic] {
-        exam.topics.sorted { $0.sortOrder < $1.sortOrder }
     }
 }

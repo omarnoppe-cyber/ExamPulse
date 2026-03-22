@@ -3,14 +3,19 @@ import SwiftData
 
 struct HomeView: View {
     @Query(sort: \Exam.examDate) private var exams: [Exam]
+    @Environment(\.dependencies) private var dependencies
     @State private var viewModel = HomeViewModel()
+
+    private var isPro: Bool { dependencies.entitlementManager.isPro }
+    private var nextExam: Exam? { viewModel.nextExam(from: exams) }
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 20) {
                     greetingHeader
-                    countdownCard
+                    if !isPro { upgradeBanner }
+                    countdownSection
                     studyActionsSection
                     upcomingExamsSection
                 }
@@ -20,16 +25,58 @@ struct HomeView: View {
             .navigationTitle("ExamPulse")
         }
     }
+}
 
-    // MARK: - Greeting
+// MARK: - Upgrade Banner
 
-    private var greetingHeader: some View {
+private extension HomeView {
+    var upgradeBanner: some View {
+        NavigationLink {
+            PaywallView()
+        } label: {
+            HStack(spacing: 14) {
+                Image(systemName: "sparkles")
+                    .font(.title3)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.white)
+                    .frame(width: 40, height: 40)
+                    .background(
+                        LinearGradient(colors: [.blue, .purple], startPoint: .topLeading, endPoint: .bottomTrailing),
+                        in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    )
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Upgrade to Pro")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.primary)
+                    Text("Unlimited exams, flashcards & questions")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.caption2)
+                    .fontWeight(.bold)
+                    .foregroundStyle(Color(uiColor: .tertiaryLabel))
+            }
+            .stadiumCard()
+        }
+    }
+}
+
+// MARK: - Greeting
+
+private extension HomeView {
+    var greetingHeader: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(viewModel.greeting())
                 .font(.title2)
                 .fontWeight(.bold)
 
-            if let exam = viewModel.nextExam(from: exams) {
+            if let exam = nextExam {
                 Text("Your next exam is **\(exam.title)**")
                     .foregroundStyle(.secondary)
             } else {
@@ -39,87 +86,91 @@ struct HomeView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
+}
 
-    // MARK: - Countdown
+// MARK: - Countdown
 
-    private var countdownCard: some View {
+private extension HomeView {
+    var countdownSection: some View {
         Group {
-            if let exam = viewModel.nextExam(from: exams) {
-                let countdown = viewModel.countdownComponents(for: exam)
-
-                card {
-                    VStack(spacing: 16) {
-                        HStack(spacing: 24) {
-                            countdownUnit(value: countdown.days, label: "days")
-                            countdownUnit(value: countdown.hours, label: "hours")
-                        }
-
-                        Text("until \(exam.title)")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-
-                        Divider()
-
-                        HStack(spacing: 8) {
-                            Image(systemName: "bell.fill")
-                                .foregroundStyle(.blue)
-                                .font(.subheadline)
-
-                            Text("Next reminder: \(viewModel.nextReminderDescription(for: exam))")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-                }
+            if let exam = nextExam {
+                examCountdown(exam)
             } else {
-                card {
-                    VStack(spacing: 12) {
-                        Image(systemName: "calendar.badge.plus")
-                            .font(.largeTitle)
-                            .foregroundStyle(.secondary)
-
-                        Text("Create an exam to see your countdown")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
-                }
+                emptyCountdown
             }
         }
     }
 
-    private func countdownUnit(value: Int, label: String) -> some View {
+    func examCountdown(_ exam: Exam) -> some View {
+        let countdown = viewModel.countdownComponents(for: exam)
+        return VStack(spacing: 16) {
+            HStack(spacing: 28) {
+                countdownUnit(value: countdown.days, label: "days")
+                countdownUnit(value: countdown.hours, label: "hours")
+            }
+
+            Text("until \(exam.title)")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            Divider()
+
+            HStack(spacing: 8) {
+                Image(systemName: "bell.fill")
+                    .foregroundStyle(.blue)
+                    .font(.caption)
+                Text("Next reminder: \(viewModel.nextReminderDescription(for: exam))")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .stadiumCard()
+    }
+
+    func countdownUnit(value: Int, label: String) -> some View {
         VStack(spacing: 4) {
             Text("\(value)")
-                .font(.system(size: 36, weight: .bold, design: .rounded))
+                .font(.system(size: 40, weight: .bold, design: .rounded))
                 .monospacedDigit()
-
             Text(label)
-                .font(.caption)
-                .fontWeight(.medium)
+                .font(.caption2)
+                .fontWeight(.semibold)
                 .foregroundStyle(.secondary)
                 .textCase(.uppercase)
         }
     }
 
-    // MARK: - Study Actions
+    var emptyCountdown: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "calendar.badge.plus")
+                .font(.largeTitle)
+                .foregroundStyle(.secondary)
+            Text("Create an exam to see your countdown")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 8)
+        .stadiumCard()
+    }
+}
 
-    private var studyActionsSection: some View {
+// MARK: - Study Actions
+
+private extension HomeView {
+    var studyActionsSection: some View {
         Group {
-            if let exam = viewModel.nextExam(from: exams), exam.status == .ready {
-                let sortedTopics = exam.topics.sorted { $0.sortOrder < $1.sortOrder }
+            if let exam = nextExam, exam.status == .ready {
+                let topics = exam.topics.sorted { $0.sortOrder < $1.sortOrder }
 
                 VStack(spacing: 12) {
-                    Text("Study")
-                        .font(.headline)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    sectionHeader("Study")
 
                     NavigationLink {
-                        topicQuizPicker(topics: sortedTopics)
+                        topicQuizPicker(topics: topics)
                     } label: {
-                        actionRow(
+                        studyActionRow(
                             title: "Start Quiz",
                             subtitle: "\(exam.questions.count) questions",
                             systemImage: "questionmark.circle.fill",
@@ -128,9 +179,9 @@ struct HomeView: View {
                     }
 
                     NavigationLink {
-                        topicFlashcardsPicker(topics: sortedTopics)
+                        topicFlashcardsPicker(topics: topics)
                     } label: {
-                        actionRow(
+                        studyActionRow(
                             title: "Review Flashcards",
                             subtitle: "\(viewModel.dueFlashcardCount(for: exam)) due",
                             systemImage: "rectangle.on.rectangle.angled",
@@ -139,9 +190,9 @@ struct HomeView: View {
                     }
 
                     NavigationLink {
-                        SummaryView(summaryText: exam.summaryText, topics: sortedTopics)
+                        SummaryView(summaryText: exam.summaryText, topics: topics)
                     } label: {
-                        actionRow(
+                        studyActionRow(
                             title: "View Summary",
                             subtitle: exam.title,
                             systemImage: "doc.text.fill",
@@ -153,67 +204,32 @@ struct HomeView: View {
         }
     }
 
-    private func actionRow(title: String, subtitle: String, systemImage: String, color: Color) -> some View {
-        card {
-            HStack(spacing: 14) {
-                Image(systemName: systemImage)
-                    .font(.title2)
-                    .foregroundStyle(color)
-                    .frame(width: 36)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
-                        .font(.headline)
-                        .foregroundStyle(.primary)
-
-                    Text(subtitle)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer()
-
-                Image(systemName: "chevron.right")
-                    .font(.caption)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(.quaternary)
-            }
+    func studyActionRow(title: String, subtitle: String, systemImage: String, color: Color) -> some View {
+        DisclosureRow(title: title, subtitle: subtitle) {
+            IconCircle(systemImage: systemImage, color: color)
         }
+        .stadiumCard()
     }
+}
 
-    // MARK: - Upcoming Exams
+// MARK: - Upcoming Exams
 
-    private var upcomingExamsSection: some View {
+private extension HomeView {
+    var upcomingExamsSection: some View {
         VStack(spacing: 12) {
-            Text("Upcoming Exams")
-                .font(.headline)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            sectionHeader("Upcoming Exams")
 
             if exams.isEmpty {
-                card {
-                    NavigationLink {
-                        ExamSetupView()
-                    } label: {
-                        HStack {
-                            Image(systemName: "plus.circle.fill")
-                                .foregroundStyle(.blue)
-                            Text("Create Your First Exam")
-                                .foregroundStyle(.primary)
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .font(.caption)
-                                .foregroundStyle(.quaternary)
-                        }
-                    }
-                }
+                createExamRow
+            } else if !isPro && exams.count >= dependencies.entitlementManager.maxFreeExams {
+                upgradeLockRow
             } else {
                 ForEach(exams.prefix(5)) { exam in
                     NavigationLink {
                         ExamDetailView(exam: exam)
                     } label: {
-                        card {
-                            ExamRowView(exam: exam)
-                        }
+                        ExamRowView(exam: exam)
+                            .stadiumCard()
                     }
                     .buttonStyle(.plain)
                 }
@@ -221,9 +237,33 @@ struct HomeView: View {
         }
     }
 
-    // MARK: - Topic Pickers
+    var createExamRow: some View {
+        NavigationLink {
+            ExamSetupView()
+        } label: {
+            DisclosureRow(title: "Create Your First Exam", subtitle: "Upload study material to get started") {
+                IconCircle(systemImage: "plus", color: .blue)
+            }
+            .stadiumCard()
+        }
+    }
 
-    private func topicQuizPicker(topics: [Topic]) -> some View {
+    var upgradeLockRow: some View {
+        NavigationLink {
+            PaywallView()
+        } label: {
+            DisclosureRow(title: "Upgrade to add more exams", subtitle: "Free tier allows 1 exam") {
+                IconCircle(systemImage: "lock.fill", color: .orange)
+            }
+            .stadiumCard()
+        }
+    }
+}
+
+// MARK: - Topic Pickers
+
+private extension HomeView {
+    func topicQuizPicker(topics: [Topic]) -> some View {
         List(topics, id: \.id) { topic in
             NavigationLink {
                 QuizView(viewModel: QuizViewModel(questions: topic.questions))
@@ -240,7 +280,7 @@ struct HomeView: View {
         .navigationTitle("Quiz by Topic")
     }
 
-    private func topicFlashcardsPicker(topics: [Topic]) -> some View {
+    func topicFlashcardsPicker(topics: [Topic]) -> some View {
         List(topics, id: \.id) { topic in
             NavigationLink {
                 FlashcardView(viewModel: FlashcardViewModel(flashcards: topic.flashcards))
@@ -256,20 +296,14 @@ struct HomeView: View {
         }
         .navigationTitle("Flashcards by Topic")
     }
+}
 
-    // MARK: - Card Helper
+// MARK: - Helpers
 
-    private func card<Content: View>(@ViewBuilder content: () -> Content) -> some View {
-        content()
-            .padding(16)
+private extension HomeView {
+    func sectionHeader(_ title: String) -> some View {
+        Text(title)
+            .font(.headline)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(.background)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .strokeBorder(.quaternary, lineWidth: 1)
-            )
     }
 }

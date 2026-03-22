@@ -6,6 +6,12 @@ struct ExamListView: View {
     @Environment(\.dependencies) private var dependencies
     @Query(sort: \Exam.examDate) private var exams: [Exam]
     @State private var viewModel: ExamListViewModel?
+    @State private var showingPaywall = false
+
+    private var canCreateExam: Bool {
+        dependencies.entitlementManager.isPro
+            || exams.count < dependencies.entitlementManager.maxFreeExams
+    }
 
     var body: some View {
         NavigationStack {
@@ -20,7 +26,11 @@ struct ExamListView: View {
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     Button {
-                        viewModel?.showingNewExam = true
+                        if canCreateExam {
+                            viewModel?.showingNewExam = true
+                        } else {
+                            showingPaywall = true
+                        }
                     } label: {
                         Image(systemName: "plus.circle.fill")
                             .font(.title2)
@@ -30,6 +40,11 @@ struct ExamListView: View {
             .sheet(isPresented: showingNewExamBinding) {
                 NavigationStack {
                     DocumentImportView()
+                }
+            }
+            .sheet(isPresented: $showingPaywall) {
+                NavigationStack {
+                    PaywallView()
                 }
             }
             .onAppear {

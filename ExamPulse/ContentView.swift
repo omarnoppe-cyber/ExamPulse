@@ -3,17 +3,27 @@ import SwiftData
 
 struct ContentView: View {
     @AppStorage("hasSeenOnboarding") private var hasSeenOnboarding = false
+    @AppStorage("hasSeenPaywall") private var hasSeenPaywall = false
+    @Environment(\.dependencies) private var dependencies
     @State private var coordinator = AppCoordinator()
 
+    private var isPro: Bool { dependencies.entitlementManager.isPro }
+
     var body: some View {
-        if hasSeenOnboarding {
-            mainTabs
-        } else {
+        if !hasSeenOnboarding {
             NavigationStack {
                 OnboardingView {
                     hasSeenOnboarding = true
                 }
             }
+        } else if !hasSeenPaywall && !isPro {
+            NavigationStack {
+                PaywallView {
+                    hasSeenPaywall = true
+                }
+            }
+        } else {
+            mainTabs
         }
     }
 
