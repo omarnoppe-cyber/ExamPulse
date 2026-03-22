@@ -12,7 +12,7 @@ final class MockAIService: AIService {
         FlashcardDTO(front: "Q2", back: "A2")
     ]
     var quizQuestionsToReturn: [QuizQuestionDTO] = [
-        QuizQuestionDTO(question: "What?", optionA: "A", optionB: "B", optionC: "C", optionD: "D", correctAnswer: "A")
+        QuizQuestionDTO(question: "What?", optionA: "A", optionB: "B", optionC: "C", optionD: "D", correctAnswer: "A", explanation: "A is correct.")
     ]
     var errorToThrow: Error?
 

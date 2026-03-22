@@ -19,7 +19,7 @@ struct WordXMLParserTests {
         </w:document>
         """
         let data = xml.data(using: .utf8)!
-        let parser = WordXMLParser(data: data, textTag: "w:t")
+        let parser = OfficeXMLTextParser(data: data, textTag: "w:t", paragraphTag: "w:p")
         let result = parser.parse()
 
         #expect(result.contains("Hello"))
@@ -45,7 +45,7 @@ struct WordXMLParserTests {
         </p:sld>
         """
         let data = xml.data(using: .utf8)!
-        let parser = WordXMLParser(data: data, textTag: "a:t")
+        let parser = OfficeXMLTextParser(data: data, textTag: "a:t", paragraphTag: "a:p")
         let result = parser.parse()
 
         #expect(result.contains("Slide Title"))
@@ -60,7 +60,7 @@ struct WordXMLParserTests {
         </w:document>
         """
         let data = xml.data(using: .utf8)!
-        let parser = WordXMLParser(data: data, textTag: "w:t")
+        let parser = OfficeXMLTextParser(data: data, textTag: "w:t", paragraphTag: "w:p")
         let result = parser.parse()
         #expect(result.isEmpty)
     }
@@ -79,7 +79,7 @@ struct WordXMLParserTests {
         </w:document>
         """
         let data = xml.data(using: .utf8)!
-        let parser = WordXMLParser(data: data, textTag: "w:t")
+        let parser = OfficeXMLTextParser(data: data, textTag: "w:t", paragraphTag: "w:p")
         let result = parser.parse()
         #expect(result.contains("Part one two"))
     }

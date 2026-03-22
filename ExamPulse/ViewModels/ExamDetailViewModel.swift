@@ -84,7 +84,7 @@ final class ExamDetailViewModel {
                         prompt: dto.question,
                         options: [dto.optionA, dto.optionB, dto.optionC, dto.optionD],
                         correctAnswer: dto.correctAnswer,
-                        explanation: "",
+                        explanation: dto.explanation ?? "",
                         type: "multipleChoice"
                     )
                     q.exam = exam

@@ -12,65 +12,36 @@ struct OpenAIService: AIService {
     // MARK: - AIService
 
     func generateSummary(from text: String) async throws -> String {
-        let prompt = """
-        You are an expert study assistant. Create a comprehensive yet concise summary of the following study material. \
-        Use markdown formatting with headers, bullet points, and bold text for key terms. \
-        Focus on the most important concepts a student needs to know for an exam.
+        let response = try await sendChatRequest(
+            prompt: StudyMaterialPrompts.summary(from: text)
+        )
 
-        Study material:
-        \(text.prefix(12000))
-        """
+        struct SummaryResponse: Codable { let summary: String }
+        if let parsed = try? decodeJSON(SummaryResponse.self, from: response) {
+            return parsed.summary
+        }
 
-        return try await sendChatRequest(prompt: prompt)
+        return response
     }
 
     func generateTopics(from text: String) async throws -> [TopicDTO] {
-        let prompt = """
-        Analyze the following study material and extract the main topics/chapters. \
-        Return a JSON array of objects with a "title" field. \
-        Return between 3 and 10 topics. Only return the JSON array, no other text.
-
-        Example: [{"title": "Photosynthesis"}, {"title": "Cell Division"}]
-
-        Study material:
-        \(text.prefix(12000))
-        """
-
-        let response = try await sendChatRequest(prompt: prompt)
+        let response = try await sendChatRequest(
+            prompt: StudyMaterialPrompts.topics(from: text)
+        )
         return try decodeJSON([TopicDTO].self, from: response)
     }
 
     func generateFlashcards(for topic: String, context: String) async throws -> [FlashcardDTO] {
-        let prompt = """
-        Create 5-8 study flashcards for the topic "\(topic)" based on the study material below. \
-        Each flashcard should have a "front" (question or term) and "back" (answer or definition). \
-        Return a JSON array. Only return the JSON array, no other text.
-
-        Example: [{"front": "What is mitosis?", "back": "Cell division producing two identical daughter cells."}]
-
-        Study material:
-        \(context.prefix(8000))
-        """
-
-        let response = try await sendChatRequest(prompt: prompt)
+        let response = try await sendChatRequest(
+            prompt: StudyMaterialPrompts.flashcards(for: topic, context: context)
+        )
         return try decodeJSON([FlashcardDTO].self, from: response)
     }
 
     func generateQuizQuestions(for topic: String, context: String) async throws -> [QuizQuestionDTO] {
-        let prompt = """
-        Create 5 multiple-choice quiz questions for the topic "\(topic)" based on the study material below. \
-        Each question must have exactly 4 options (optionA, optionB, optionC, optionD) and a correctAnswer \
-        that matches one of the options exactly. \
-        Return a JSON array. Only return the JSON array, no other text.
-
-        Example: [{"question": "What organelle produces ATP?", "optionA": "Nucleus", "optionB": "Mitochondria", \
-        "optionC": "Ribosome", "optionD": "Golgi apparatus", "correctAnswer": "Mitochondria"}]
-
-        Study material:
-        \(context.prefix(8000))
-        """
-
-        let response = try await sendChatRequest(prompt: prompt)
+        let response = try await sendChatRequest(
+            prompt: StudyMaterialPrompts.questions(for: topic, context: context)
+        )
         return try decodeJSON([QuizQuestionDTO].self, from: response)
     }
 
@@ -89,6 +60,7 @@ struct OpenAIService: AIService {
         let body: [String: Any] = [
             "model": model,
             "messages": [
+                ["role": "system", "content": StudyMaterialPrompts.systemMessage],
                 ["role": "user", "content": prompt]
             ],
             "temperature": 0.7,

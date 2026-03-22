@@ -26,7 +26,7 @@ struct PPTXParsingService: DocumentParsingService {
         var fullText = ""
         for slideFile in slideFiles {
             let data = try Data(contentsOf: slideFile)
-            let parser = WordXMLParser(data: data, textTag: "a:t")
+            let parser = OfficeXMLTextParser(data: data, textTag: "a:t", paragraphTag: "a:p")
             let slideText = parser.parse()
             if !slideText.isEmpty {
                 fullText += slideText + "\n\n"

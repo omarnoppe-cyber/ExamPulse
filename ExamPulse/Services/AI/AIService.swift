@@ -16,6 +16,7 @@ struct QuizQuestionDTO: Codable {
     let optionC: String
     let optionD: String
     let correctAnswer: String
+    let explanation: String?
 }
 
 protocol AIService {
