@@ -89,7 +89,7 @@ struct ProgressDashboardView: View {
             color: .green,
             progress: viewModel.daysRemainingProgress(in: exams)
         ) {
-            Text(viewModel.daysRemaining(in: exams).map { "Until your next exam" } ?? "Create an exam to track time remaining")
+            Text(viewModel.daysRemaining(in: exams).map { _ in "Until your next exam" } ?? "Create an exam to track time remaining")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
