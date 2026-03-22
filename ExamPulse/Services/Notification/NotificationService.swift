@@ -3,6 +3,7 @@ import UserNotifications
 
 protocol NotificationServiceProtocol {
     func requestAuthorization() async throws -> Bool
+    func scheduleDailyReminder(examDate: Date)
     func scheduleDailyReminders(for exam: Exam)
     func cancelReminders(for exam: Exam)
 }
@@ -16,6 +17,51 @@ final class NotificationService: NotificationServiceProtocol {
 
     func requestAuthorization() async throws -> Bool {
         try await center.requestAuthorization(options: [.alert, .sound, .badge])
+    }
+
+    func scheduleDailyReminder(examDate: Date) {
+        cancelGenericDailyReminders()
+
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let examDay = calendar.startOfDay(for: examDate)
+
+        guard today <= examDay else { return }
+
+        var currentDay = today
+        var dayIndex = 0
+
+        while currentDay <= examDay {
+            let reminderDate = calendar.date(
+                bySettingHour: 9,
+                minute: 0,
+                second: 0,
+                of: currentDay
+            ) ?? currentDay
+
+            if reminderDate > Date() {
+                let content = UNMutableNotificationContent()
+                content.title = "ExamPulse"
+                content.body = "Ready for 5 flashcards?"
+                content.sound = .default
+
+                let dateComponents = calendar.dateComponents(
+                    [.year, .month, .day, .hour, .minute],
+                    from: reminderDate
+                )
+                let trigger = UNCalendarNotificationTrigger(dateMatching: dateComponents, repeats: false)
+                let request = UNNotificationRequest(
+                    identifier: genericNotificationID(for: dayIndex),
+                    content: content,
+                    trigger: trigger
+                )
+
+                center.add(request)
+            }
+
+            currentDay = calendar.date(byAdding: .day, value: 1, to: currentDay) ?? currentDay
+            dayIndex += 1
+        }
     }
 
     func scheduleDailyReminders(for exam: Exam) {
@@ -72,7 +118,24 @@ final class NotificationService: NotificationServiceProtocol {
         "exam-\(exam.id.uuidString)"
     }
 
+    private func genericNotificationPrefix() -> String {
+        "daily-study-reminder"
+    }
+
     private func notificationID(for exam: Exam, day: Int) -> String {
         "\(notificationPrefix(for: exam))-day\(day)"
+    }
+
+    private func genericNotificationID(for day: Int) -> String {
+        "\(genericNotificationPrefix())-day\(day)"
+    }
+
+    private func cancelGenericDailyReminders() {
+        center.getPendingNotificationRequests { [weak self] requests in
+            guard let self else { return }
+            let prefix = self.genericNotificationPrefix()
+            let idsToRemove = requests.map(\.identifier).filter { $0.hasPrefix(prefix) }
+            self.center.removePendingNotificationRequests(withIdentifiers: idsToRemove)
+        }
     }
 }
