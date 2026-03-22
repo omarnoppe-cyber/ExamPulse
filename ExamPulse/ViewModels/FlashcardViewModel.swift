@@ -43,20 +43,14 @@ final class FlashcardViewModel {
     func review(_ rating: ReviewRating) {
         guard let card = currentCard else { return }
 
+        let result = SpacedRepetitionScheduler.schedule(card: card, rating: rating)
+
         card.reviewCount += 1
         card.lastReviewedAt = .now
-
-        switch rating {
-        case .again:
-            card.isLearned = false
-            card.difficultyScore = min(card.difficultyScore + 1, 5)
-        case .hard:
-            card.isLearned = false
-            card.difficultyScore = min(card.difficultyScore + 0.5, 5)
-        case .easy:
-            card.isLearned = true
-            card.difficultyScore = max(card.difficultyScore - 0.5, 0)
-        }
+        card.intervalDays = result.intervalDays
+        card.difficultyScore = result.difficultyScore
+        card.nextReviewDate = result.nextReviewDate
+        card.isLearned = result.isLearned
 
         advance()
     }

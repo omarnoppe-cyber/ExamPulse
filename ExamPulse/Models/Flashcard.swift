@@ -12,9 +12,16 @@ final class Flashcard {
     var difficultyScore: Double
     var lastReviewedAt: Date?
     var isLearned: Bool
+    var intervalDays: Double
+    var nextReviewDate: Date?
 
     var exam: Exam?
     var topic: Topic?
+
+    var isDue: Bool {
+        guard let nextReviewDate else { return true }
+        return nextReviewDate <= .now
+    }
 
     init(
         id: UUID = UUID(),
@@ -25,7 +32,9 @@ final class Flashcard {
         reviewCount: Int = 0,
         difficultyScore: Double = 0,
         lastReviewedAt: Date? = nil,
-        isLearned: Bool = false
+        isLearned: Bool = false,
+        intervalDays: Double = 0,
+        nextReviewDate: Date? = nil
     ) {
         self.id = id
         self.examId = examId
@@ -36,6 +45,8 @@ final class Flashcard {
         self.difficultyScore = difficultyScore
         self.lastReviewedAt = lastReviewedAt
         self.isLearned = isLearned
+        self.intervalDays = intervalDays
+        self.nextReviewDate = nextReviewDate
     }
 
     convenience init(front: String, back: String, isLearned: Bool = false) {

@@ -11,27 +11,30 @@ struct FlashcardViewModelTests {
         ]
     }
 
-    @Test func easyReviewAdvancesAndSetsFlag() {
+    @Test func easyReviewAdvancesAndSchedules() {
         let cards = makeCards()
         let vm = FlashcardViewModel(flashcards: cards)
         vm.flip()
         vm.review(.easy)
         #expect(cards[0].isLearned == true)
         #expect(cards[0].reviewCount == 1)
+        #expect(cards[0].intervalDays > 0)
+        #expect(cards[0].nextReviewDate != nil)
         #expect(vm.currentIndex == 1)
     }
 
-    @Test func againReviewAdvancesWithoutFlag() {
+    @Test func againReviewResetsInterval() {
         let cards = makeCards()
         let vm = FlashcardViewModel(flashcards: cards)
         vm.flip()
         vm.review(.again)
         #expect(cards[0].isLearned == false)
+        #expect(cards[0].intervalDays == 0)
         #expect(cards[0].difficultyScore == 1)
         #expect(vm.currentIndex == 1)
     }
 
-    @Test func hardReviewIncreasesDifficulty() {
+    @Test func hardReviewGrowsIntervalSlowly() {
         let cards = makeCards()
         let vm = FlashcardViewModel(flashcards: cards)
 
@@ -40,6 +43,7 @@ struct FlashcardViewModelTests {
 
         #expect(cards[0].isLearned == false)
         #expect(cards[0].difficultyScore == 0.5)
+        #expect(cards[0].intervalDays == 1.2)
         #expect(cards[0].reviewCount == 1)
     }
 
