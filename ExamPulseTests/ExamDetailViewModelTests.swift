@@ -15,16 +15,12 @@ struct ExamDetailViewModelTests {
         doc.exam = exam
         context.insert(doc)
 
-        let mockAI = MockAIService()
-        let mockKeyManager = MockAPIKeyManager(apiKey: "sk-test")
-        let vm = ExamDetailViewModel(aiService: mockAI, apiKeyManager: mockKeyManager)
+        let mockGenerator = MockStudyContentGenerator()
+        let vm = ExamDetailViewModel(generator: mockGenerator, apiKeyManager: MockAPIKeyManager(apiKey: "sk-test"))
 
         await vm.generateStudyMaterials(for: exam, context: context)
 
-        #expect(mockAI.generateSummaryCalled == true)
-        #expect(mockAI.generateTopicsCalled == true)
-        #expect(mockAI.generateFlashcardsCalled == true)
-        #expect(mockAI.generateQuizQuestionsCalled == true)
+        #expect(mockGenerator.generateFromTextCalled == true)
         #expect(exam.status == .ready)
         #expect(vm.isGenerating == false)
         #expect(vm.errorMessage == nil)
@@ -41,11 +37,11 @@ struct ExamDetailViewModelTests {
         doc.exam = exam
         context.insert(doc)
 
-        let mockAI = MockAIService()
-        mockAI.errorToThrow = AIServiceError.requestFailed("Network error")
+        let mockGenerator = MockStudyContentGenerator()
+        mockGenerator.errorToThrow = AIServiceError.requestFailed("Network error")
 
         let vm = ExamDetailViewModel(
-            aiService: mockAI,
+            generator: mockGenerator,
             apiKeyManager: MockAPIKeyManager()
         )
 
@@ -64,7 +60,7 @@ struct ExamDetailViewModelTests {
         context.insert(exam)
 
         let vm = ExamDetailViewModel(
-            aiService: MockAIService(),
+            generator: MockStudyContentGenerator(),
             apiKeyManager: MockAPIKeyManager()
         )
 
@@ -85,15 +81,15 @@ struct ExamDetailViewModelTests {
         doc.exam = exam
         context.insert(doc)
 
-        let mockAI = MockAIService()
+        let mockGenerator = MockStudyContentGenerator()
         let vm = ExamDetailViewModel(
-            aiService: mockAI,
+            generator: mockGenerator,
             apiKeyManager: MockAPIKeyManager()
         )
 
         vm.isGenerating = true
         await vm.generateStudyMaterials(for: exam, context: context)
 
-        #expect(mockAI.generateSummaryCalled == false)
+        #expect(mockGenerator.generateFromTextCalled == false)
     }
 }

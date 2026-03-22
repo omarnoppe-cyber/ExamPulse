@@ -27,7 +27,7 @@ struct ExamDetailView: View {
         .onAppear {
             if viewModel == nil {
                 viewModel = ExamDetailViewModel(
-                    aiService: dependencies.aiService,
+                    generator: dependencies.studyContentGenerator,
                     apiKeyManager: dependencies.apiKeyManager
                 )
             }

@@ -7,11 +7,11 @@ final class ExamDetailViewModel {
     var isGenerating = false
     var errorMessage: String?
 
-    private let aiService: AIService
+    private let generator: StudyContentGenerating
     let apiKeyManager: APIKeyManaging
 
-    init(aiService: AIService, apiKeyManager: APIKeyManaging) {
-        self.aiService = aiService
+    init(generator: StudyContentGenerating, apiKeyManager: APIKeyManaging) {
+        self.generator = generator
         self.apiKeyManager = apiKeyManager
     }
 
@@ -33,66 +33,8 @@ final class ExamDetailViewModel {
         exam.status = .generating
 
         do {
-            async let summaryTask = aiService.generateSummary(from: combinedText)
-            async let topicsTask = aiService.generateTopics(from: combinedText)
-
-            let (summaryText, topicDTOs) = try await (summaryTask, topicsTask)
-
-            for document in exam.studyDocuments {
-                document.summary = summaryText
-            }
-
-            var createdTopics: [Topic] = []
-            for (index, dto) in topicDTOs.enumerated() {
-                let topic = Topic(
-                    examId: exam.id,
-                    title: dto.title,
-                    masteryScore: 0,
-                    sortOrder: index
-                )
-                topic.exam = exam
-                context.insert(topic)
-                createdTopics.append(topic)
-            }
-
-            for topic in createdTopics {
-                async let flashcardsTask = aiService.generateFlashcards(
-                    for: topic.title, context: combinedText
-                )
-                async let quizTask = aiService.generateQuizQuestions(
-                    for: topic.title, context: combinedText
-                )
-
-                let (flashcardDTOs, quizDTOs) = try await (flashcardsTask, quizTask)
-
-                for dto in flashcardDTOs {
-                    let card = Flashcard(
-                        examId: exam.id,
-                        topicId: topic.id,
-                        front: dto.front,
-                        back: dto.back
-                    )
-                    card.exam = exam
-                    card.topic = topic
-                    context.insert(card)
-                }
-
-                for dto in quizDTOs {
-                    let q = Question(
-                        examId: exam.id,
-                        topicId: topic.id,
-                        prompt: dto.question,
-                        options: [dto.optionA, dto.optionB, dto.optionC, dto.optionD],
-                        correctAnswer: dto.correctAnswer,
-                        explanation: dto.explanation ?? "",
-                        type: "multipleChoice"
-                    )
-                    q.exam = exam
-                    q.topic = topic
-                    context.insert(q)
-                }
-            }
-
+            let content = try await generator.generateFromText(combinedText)
+            applyContent(content, to: exam, context: context)
             exam.status = .ready
         } catch {
             exam.status = .error
@@ -100,5 +42,50 @@ final class ExamDetailViewModel {
         }
 
         isGenerating = false
+    }
+
+    @MainActor
+    private func applyContent(_ content: StudyContent, to exam: Exam, context: ModelContext) {
+        for document in exam.studyDocuments {
+            document.summary = content.summary
+        }
+
+        for (index, generatedTopic) in content.topics.enumerated() {
+            let topic = Topic(
+                examId: exam.id,
+                title: generatedTopic.title,
+                masteryScore: 0,
+                sortOrder: index
+            )
+            topic.exam = exam
+            context.insert(topic)
+
+            for dto in generatedTopic.flashcards {
+                let card = Flashcard(
+                    examId: exam.id,
+                    topicId: topic.id,
+                    front: dto.front,
+                    back: dto.back
+                )
+                card.exam = exam
+                card.topic = topic
+                context.insert(card)
+            }
+
+            for dto in generatedTopic.questions {
+                let q = Question(
+                    examId: exam.id,
+                    topicId: topic.id,
+                    prompt: dto.question,
+                    options: [dto.optionA, dto.optionB, dto.optionC, dto.optionD],
+                    correctAnswer: dto.correctAnswer,
+                    explanation: dto.explanation ?? "",
+                    type: "multipleChoice"
+                )
+                q.exam = exam
+                q.topic = topic
+                context.insert(q)
+            }
+        }
     }
 }

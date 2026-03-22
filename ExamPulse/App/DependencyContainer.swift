@@ -12,20 +12,29 @@ final class DependencyContainer {
     let fileStorageService: FileStorageServiceProtocol
     let apiKeyManager: APIKeyManaging
     let documentParserFactory: (URL) -> DocumentParsingService
+    let studyContentGenerator: StudyContentGenerating
 
     init(
         aiService: AIService? = nil,
         notificationService: NotificationServiceProtocol? = nil,
         fileStorageService: FileStorageServiceProtocol? = nil,
         apiKeyManager: APIKeyManaging? = nil,
-        documentParserFactory: ((URL) -> DocumentParsingService)? = nil
+        documentParserFactory: ((URL) -> DocumentParsingService)? = nil,
+        studyContentGenerator: StudyContentGenerating? = nil
     ) {
         let keyManager = apiKeyManager ?? APIKeyManager()
+        let ai = aiService ?? OpenAIService(apiKeyManager: keyManager)
+        let parserFactory = documentParserFactory ?? defaultDocumentParser
+
         self.apiKeyManager = keyManager
-        self.aiService = aiService ?? OpenAIService(apiKeyManager: keyManager)
+        self.aiService = ai
         self.notificationService = notificationService ?? NotificationService()
         self.fileStorageService = fileStorageService ?? FileStorageService()
-        self.documentParserFactory = documentParserFactory ?? defaultDocumentParser
+        self.documentParserFactory = parserFactory
+        self.studyContentGenerator = studyContentGenerator ?? StudyContentGenerator(
+            aiService: ai,
+            parserFactory: parserFactory
+        )
     }
 }
 
