@@ -3,9 +3,9 @@ import Foundation
 @testable import ExamPulse
 
 struct StudyContentGeneratorTests {
-    @Test func generatesContentFromText() async throws {
+    @MainActor @Test func generatesContentFromText() async throws {
         let mockAI = MockAIService()
-        let generator = await StudyContentGenerator(
+        let generator = StudyContentGenerator(
             aiService: mockAI,
             parserFactory: { _ in MockDocumentParsingService() }
         )
@@ -34,10 +34,10 @@ struct StudyContentGeneratorTests {
         }
     }
 
-    @Test func generatesFromFileURLs() async throws {
+    @MainActor @Test func generatesFromFileURLs() async throws {
         let mockParser = MockDocumentParsingService(textToReturn: "Study content about biology.")
         let mockAI = MockAIService()
-        let generator = await StudyContentGenerator(
+        let generator = StudyContentGenerator(
             aiService: mockAI,
             parserFactory: { _ in mockParser }
         )
@@ -48,7 +48,7 @@ struct StudyContentGeneratorTests {
         #expect(!content.topics.isEmpty)
     }
 
-    @Test func preservesTopicOrder() async throws {
+    @MainActor @Test func preservesTopicOrder() async throws {
         let mockAI = MockAIService()
         mockAI.topicsToReturn = [
             TopicDTO(title: "First"),
@@ -56,7 +56,7 @@ struct StudyContentGeneratorTests {
             TopicDTO(title: "Third")
         ]
 
-        let generator = await StudyContentGenerator(
+        let generator = StudyContentGenerator(
             aiService: mockAI,
             parserFactory: { _ in MockDocumentParsingService() }
         )
@@ -64,16 +64,16 @@ struct StudyContentGeneratorTests {
         let content = try await generator.generateFromText("Some study material.")
 
         #expect(content.topics.count == 3)
-        await #expect(content.topics[0].title == "First")
-        await #expect(content.topics[1].title == "Second")
-        await #expect(content.topics[2].title == "Third")
+        #expect(content.topics[0].title == "First")
+        #expect(content.topics[1].title == "Second")
+        #expect(content.topics[2].title == "Third")
     }
 
-    @Test func propagatesAIError() async {
+    @MainActor @Test func propagatesAIError() async {
         let mockAI = MockAIService()
         mockAI.errorToThrow = AIServiceError.requestFailed("Rate limited")
 
-        let generator = await StudyContentGenerator(
+        let generator = StudyContentGenerator(
             aiService: mockAI,
             parserFactory: { _ in MockDocumentParsingService() }
         )
