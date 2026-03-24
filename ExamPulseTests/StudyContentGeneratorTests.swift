@@ -5,7 +5,7 @@ import Foundation
 struct StudyContentGeneratorTests {
     @Test func generatesContentFromText() async throws {
         let mockAI = MockAIService()
-        let generator = StudyContentGenerator(
+        let generator = await StudyContentGenerator(
             aiService: mockAI,
             parserFactory: { _ in MockDocumentParsingService() }
         )
@@ -21,7 +21,7 @@ struct StudyContentGeneratorTests {
     }
 
     @Test func throwsOnEmptyText() async {
-        let generator = StudyContentGenerator(
+        let generator = await StudyContentGenerator(
             aiService: MockAIService(),
             parserFactory: { _ in MockDocumentParsingService() }
         )
@@ -37,7 +37,7 @@ struct StudyContentGeneratorTests {
     @Test func generatesFromFileURLs() async throws {
         let mockParser = MockDocumentParsingService(textToReturn: "Study content about biology.")
         let mockAI = MockAIService()
-        let generator = StudyContentGenerator(
+        let generator = await StudyContentGenerator(
             aiService: mockAI,
             parserFactory: { _ in mockParser }
         )
@@ -56,7 +56,7 @@ struct StudyContentGeneratorTests {
             TopicDTO(title: "Third")
         ]
 
-        let generator = StudyContentGenerator(
+        let generator = await StudyContentGenerator(
             aiService: mockAI,
             parserFactory: { _ in MockDocumentParsingService() }
         )
@@ -64,16 +64,16 @@ struct StudyContentGeneratorTests {
         let content = try await generator.generateFromText("Some study material.")
 
         #expect(content.topics.count == 3)
-        #expect(content.topics[0].title == "First")
-        #expect(content.topics[1].title == "Second")
-        #expect(content.topics[2].title == "Third")
+        await #expect(content.topics[0].title == "First")
+        await #expect(content.topics[1].title == "Second")
+        await #expect(content.topics[2].title == "Third")
     }
 
     @Test func propagatesAIError() async {
         let mockAI = MockAIService()
         mockAI.errorToThrow = AIServiceError.requestFailed("Rate limited")
 
-        let generator = StudyContentGenerator(
+        let generator = await StudyContentGenerator(
             aiService: mockAI,
             parserFactory: { _ in MockDocumentParsingService() }
         )

@@ -104,19 +104,21 @@ final class ExamDetailViewModel {
         let maxQuestions = entitlementManager.maxFreeQuestionsPerExam
 
         if exam.flashcards.count > maxFlashcards {
-            let excess = exam.flashcards
-                .sorted { $0.front < $1.front }
-                .dropFirst(maxFlashcards)
+            let sorted = exam.flashcards.sorted { $0.front.localizedStandardCompare($1.front) == .orderedAscending }
+            let excess = Array(sorted.suffix(sorted.count - maxFlashcards))
             for card in excess {
+                card.topic?.flashcards.removeAll { $0.id == card.id }
+                exam.flashcards.removeAll { $0.id == card.id }
                 context.delete(card)
             }
         }
 
         if exam.questions.count > maxQuestions {
-            let excess = exam.questions
-                .sorted { $0.prompt < $1.prompt }
-                .dropFirst(maxQuestions)
+            let sorted = exam.questions.sorted { $0.prompt.localizedStandardCompare($1.prompt) == .orderedAscending }
+            let excess = Array(sorted.suffix(sorted.count - maxQuestions))
             for question in excess {
+                question.topic?.questions.removeAll { $0.id == question.id }
+                exam.questions.removeAll { $0.id == question.id }
                 context.delete(question)
             }
         }

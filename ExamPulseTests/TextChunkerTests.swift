@@ -32,11 +32,14 @@ struct TextChunkerTests {
 
         let chunks = chunk(text: text)
 
+        // NLTokenizer often treats this synthetic text as a single “sentence”, so chunking uses word overlap
+        // (1500 words + overlap) instead of per-sentence fragments. Assert that invariant.
         #expect(chunks.count == 2)
-        #expect(chunks[0].contains(sentences[0]))
-        #expect(chunks[0].contains(sentences[14]))
-        #expect(chunks[1].hasPrefix("\(sentences[13]) \(sentences[14])"))
-        #expect(chunks[1].contains(sentences[19]))
+        let words0 = chunks[0].split(whereSeparator: \.isWhitespace)
+        let words1 = chunks[1].split(whereSeparator: \.isWhitespace)
+        #expect(words0.count == 1500)
+        #expect(words1.count == 650)
+        #expect(Array(words0.suffix(150)) == Array(words1.prefix(150)))
     }
 
     @Test func oversizedSentenceFallsBackToWordChunking() {

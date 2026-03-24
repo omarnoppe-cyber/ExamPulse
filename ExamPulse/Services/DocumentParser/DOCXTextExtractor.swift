@@ -51,14 +51,22 @@ final class OfficeXMLTextParser: NSObject, XMLParserDelegate {
         return extractedText.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    /// Foundation’s `XMLParser` reports local names (`p`, `t`) while tags are often written as `w:p` / `w:t`.
+    private func matchesTag(_ elementName: String, qualifiedName: String?, tag: String) -> Bool {
+        let full = qualifiedName ?? elementName
+        if full == tag { return true }
+        if let local = tag.split(separator: ":").last, elementName == String(local) { return true }
+        return false
+    }
+
     func parser(
         _ parser: XMLParser,
         didStartElement elementName: String,
         namespaceURI: String?,
-        qualifiedName: String?,
-        attributes: [String: String] = [:]
+        qualifiedName qName: String?,
+        attributes attributeDict: [String: String] = [:]
     ) {
-        if elementName == textTag {
+        if matchesTag(elementName, qualifiedName: qName, tag: textTag) {
             isInsideTextTag = true
             currentText = ""
         }
@@ -74,12 +82,12 @@ final class OfficeXMLTextParser: NSObject, XMLParserDelegate {
         _ parser: XMLParser,
         didEndElement elementName: String,
         namespaceURI: String?,
-        qualifiedName: String?
+        qualifiedName qName: String?
     ) {
-        if elementName == textTag {
+        if matchesTag(elementName, qualifiedName: qName, tag: textTag) {
             isInsideTextTag = false
             extractedText += currentText
-        } else if elementName == paragraphTag {
+        } else if matchesTag(elementName, qualifiedName: qName, tag: paragraphTag) {
             extractedText += "\n"
         }
     }

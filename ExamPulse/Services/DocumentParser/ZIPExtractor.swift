@@ -3,6 +3,20 @@ import Compression
 
 
 enum ZIPExtractor {
+    /// ZIP metadata is little-endian; reads must be alignment-safe on all CPUs.
+    private static func readUInt32LE(_ data: Data, offset: Int) -> UInt32 {
+        guard offset + 4 <= data.count else { return 0 }
+        return UInt32(data[offset])
+            | UInt32(data[offset + 1]) << 8
+            | UInt32(data[offset + 2]) << 16
+            | UInt32(data[offset + 3]) << 24
+    }
+
+    private static func readUInt16LE(_ data: Data, offset: Int) -> UInt16 {
+        guard offset + 2 <= data.count else { return 0 }
+        return UInt16(data[offset]) | UInt16(data[offset + 1]) << 8
+    }
+
     private static let localHeaderSignature: UInt32 = 0x04034b50
     private static let centralHeaderSignature: UInt32 = 0x02014b50
     private static let endOfCentralSignature: UInt32 = 0x06054b50
@@ -69,16 +83,16 @@ enum ZIPExtractor {
 
         var eocdOffset = -1
         for i in stride(from: min(data.count - 22, searchStart), through: 0, by: -1) {
-            let sig = data.withUnsafeBytes { $0.load(fromByteOffset: i, as: UInt32.self) }
-            if sig == endOfCentralSignature.littleEndian {
+            let sig = readUInt32LE(data, offset: i)
+            if sig == endOfCentralSignature {
                 eocdOffset = i
                 break
             }
         }
         guard eocdOffset >= 0 else { throw DocumentParsingError.parsingFailed("Invalid ZIP archive.") }
 
-        let cdOffset = Int(data.withUnsafeBytes { $0.load(fromByteOffset: eocdOffset + 16, as: UInt32.self) }.littleEndian)
-        let cdSize = Int(data.withUnsafeBytes { $0.load(fromByteOffset: eocdOffset + 12, as: UInt32.self) }.littleEndian)
+        let cdOffset = Int(readUInt32LE(data, offset: eocdOffset + 16))
+        let cdSize = Int(readUInt32LE(data, offset: eocdOffset + 12))
         let cdEnd = cdOffset + cdSize
         guard cdEnd <= data.count else { throw DocumentParsingError.parsingFailed("Invalid ZIP archive.") }
 
@@ -86,13 +100,13 @@ enum ZIPExtractor {
         var offset = cdOffset
 
         while offset < cdEnd {
-            let sig = data.withUnsafeBytes { $0.load(fromByteOffset: offset, as: UInt32.self) }
-            if sig != centralHeaderSignature.littleEndian { break }
+            let sig = readUInt32LE(data, offset: offset)
+            if sig != centralHeaderSignature { break }
 
-            let localHeaderOffset = data.withUnsafeBytes { $0.load(fromByteOffset: offset + 42, as: UInt32.self) }.littleEndian
-            let filenameLength = data.withUnsafeBytes { $0.load(fromByteOffset: offset + 28, as: UInt16.self) }.littleEndian
-            let extraLength = data.withUnsafeBytes { $0.load(fromByteOffset: offset + 30, as: UInt16.self) }.littleEndian
-            let commentLength = data.withUnsafeBytes { $0.load(fromByteOffset: offset + 32, as: UInt16.self) }.littleEndian
+            let localHeaderOffset = readUInt32LE(data, offset: offset + 42)
+            let filenameLength = readUInt16LE(data, offset: offset + 28)
+            let extraLength = readUInt16LE(data, offset: offset + 30)
+            let commentLength = readUInt16LE(data, offset: offset + 32)
 
             entries.append(CentralEntry(
                 localHeaderOffset: localHeaderOffset,
@@ -111,14 +125,14 @@ enum ZIPExtractor {
     private static func parseLocalHeader(zipData: Data, offset: Int) throws -> (path: String, method: UInt16, compressedSize: UInt32, uncompressedSize: UInt32, dataOffset: Int) {
         guard offset + 30 <= zipData.count else { throw DocumentParsingError.parsingFailed("Invalid ZIP archive.") }
 
-        let sig = zipData.withUnsafeBytes { $0.load(fromByteOffset: offset, as: UInt32.self) }
-        guard sig == localHeaderSignature.littleEndian else { throw DocumentParsingError.parsingFailed("Invalid ZIP archive.") }
+        let sig = readUInt32LE(zipData, offset: offset)
+        guard sig == localHeaderSignature else { throw DocumentParsingError.parsingFailed("Invalid ZIP archive.") }
 
-        let compressionMethod = zipData.withUnsafeBytes { $0.load(fromByteOffset: offset + 8, as: UInt16.self) }.littleEndian
-        let compressedSize = zipData.withUnsafeBytes { $0.load(fromByteOffset: offset + 18, as: UInt32.self) }.littleEndian
-        let uncompressedSize = zipData.withUnsafeBytes { $0.load(fromByteOffset: offset + 22, as: UInt32.self) }.littleEndian
-        let filenameLength = zipData.withUnsafeBytes { $0.load(fromByteOffset: offset + 26, as: UInt16.self) }.littleEndian
-        let extraLength = zipData.withUnsafeBytes { $0.load(fromByteOffset: offset + 28, as: UInt16.self) }.littleEndian
+        let compressionMethod = readUInt16LE(zipData, offset: offset + 8)
+        let compressedSize = readUInt32LE(zipData, offset: offset + 18)
+        let uncompressedSize = readUInt32LE(zipData, offset: offset + 22)
+        let filenameLength = readUInt16LE(zipData, offset: offset + 26)
+        let extraLength = readUInt16LE(zipData, offset: offset + 28)
 
         let filenameStart = offset + 30
         let path: String
@@ -134,19 +148,17 @@ enum ZIPExtractor {
     }
 
     private static func inflate(_ data: Data, uncompressedSize: Int) throws -> Data {
-        let destCapacity = uncompressedSize * 4
+        let destCapacity = max(uncompressedSize * 4, 4096)
         let destBuffer = UnsafeMutablePointer<UInt8>.allocate(capacity: destCapacity)
         defer { destBuffer.deallocate() }
 
-        var zlibData = Data([0x78, 0x9C])
-        zlibData.append(data)
-
-        let decodedCount = zlibData.withUnsafeBytes { src in
+        // ZIP stores raw deflate; Apple's COMPRESSION_ZLIB expects raw deflate (no zlib header).
+        let decodedCount = data.withUnsafeBytes { src in
             compression_decode_buffer(
                 destBuffer,
                 destCapacity,
                 src.bindMemory(to: UInt8.self).baseAddress!,
-                zlibData.count,
+                data.count,
                 nil,
                 COMPRESSION_ZLIB
             )

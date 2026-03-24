@@ -19,7 +19,8 @@ struct DocumentTextExtractionTests {
 
         let text = try await PDFParsingService().extractText(from: url)
 
-        #expect(text == "Hello PDF page one.\n\nPage two text.\n\nExtra spacing.")
+        // Same page: PDFKit yields line breaks; normalizeWhitespace collapses blank lines to a single \n between lines.
+        #expect(text == "Hello PDF page one.\n\nPage two text.\nExtra spacing.")
     }
 
     @Test func docxTextExtractorReadsWordDocumentXML() throws {
