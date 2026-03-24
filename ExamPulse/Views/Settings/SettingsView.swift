@@ -11,14 +11,20 @@ struct SettingsView: View {
     private var isPro: Bool { dependencies.entitlementManager.isPro }
 
     var body: some View {
-        Form {
-            apiKeySection
-            if keyManager.hasAPIKey { removeKeySection }
-            subscriptionSection
-            aboutSection
+        ScrollView {
+            VStack(spacing: 16) {
+                apiKeySection
+                if keyManager.hasAPIKey { removeKeySection }
+                subscriptionSection
+                aboutSection
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 8)
+            .padding(.bottom, 32)
         }
+        .themeCanvas()
         .navigationTitle("Settings")
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarTitleDisplayMode(.large)
         .onAppear { apiKey = keyManager.apiKey ?? "" }
     }
 }
@@ -27,7 +33,13 @@ struct SettingsView: View {
 
 private extension SettingsView {
     var apiKeySection: some View {
-        Section {
+        VStack(alignment: .leading, spacing: 14) {
+            Label {
+                Text("OpenAI API Key").font(.headline).foregroundStyle(.themeDark)
+            } icon: {
+                Image(systemName: "key.fill").foregroundStyle(.themePurple)
+            }
+
             HStack {
                 Group {
                     if showingKey {
@@ -40,40 +52,47 @@ private extension SettingsView {
                             .textContentType(.password)
                     }
                 }
+                .padding(12)
+                .background(.themeSurfaceElevated, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
 
                 Button {
                     showingKey.toggle()
                 } label: {
                     Image(systemName: showingKey ? "eye.slash" : "eye")
                         .foregroundStyle(.secondary)
+                        .frame(width: 44, height: 44)
                 }
                 .buttonStyle(.plain)
             }
 
-            Button("Save API Key") {
+            Button {
                 keyManager.apiKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
                 saved = true
+            } label: {
+                Text("Save API Key")
             }
+            .buttonStyle(.primary)
             .disabled(apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-        } header: {
-            Text("OpenAI API Key")
-        } footer: {
+
             Text(saved
                  ? "API key saved securely to Keychain."
                  : "Your key is stored securely in the device Keychain and never leaves your device except to call the OpenAI API."
             )
+            .font(.caption)
             .foregroundStyle(saved ? .green : .secondary)
         }
+        .softCard()
     }
 
     var removeKeySection: some View {
-        Section {
-            Button("Remove API Key", role: .destructive) {
-                keyManager.apiKey = nil
-                apiKey = ""
-                saved = false
-            }
+        Button("Remove API Key", role: .destructive) {
+            keyManager.apiKey = nil
+            apiKey = ""
+            saved = false
         }
+        .font(.subheadline)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .softCard()
     }
 }
 
@@ -81,25 +100,36 @@ private extension SettingsView {
 
 private extension SettingsView {
     var subscriptionSection: some View {
-        Section("Subscription") {
+        VStack(alignment: .leading, spacing: 14) {
+            Label {
+                Text("Subscription").font(.headline).foregroundStyle(.themeDark)
+            } icon: {
+                Image(systemName: "creditcard.fill").foregroundStyle(.themePurple)
+            }
+
             HStack {
-                Text("Plan")
+                Text("Plan").foregroundStyle(.secondary)
                 Spacer()
-                StatusPill(title: isPro ? "Pro" : "Free", color: isPro ? .blue : .secondary)
+                StatusPill(title: isPro ? "Pro" : "Free", color: isPro ? .themePurple : .secondary)
             }
 
             if !isPro {
                 NavigationLink {
                     PaywallView()
                 } label: {
-                    Label("Upgrade to Pro", systemImage: "sparkles")
+                    DisclosureRow(title: "Upgrade to Pro", subtitle: "Unlock unlimited features") {
+                        IconCircle(systemImage: "sparkles", color: .themePurple)
+                    }
                 }
             }
 
             Button("Restore Purchases") {
                 Task { await dependencies.storeService.restorePurchases() }
             }
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
         }
+        .softCard()
     }
 }
 
@@ -107,17 +137,24 @@ private extension SettingsView {
 
 private extension SettingsView {
     var aboutSection: some View {
-        Section("About") {
+        VStack(alignment: .leading, spacing: 14) {
+            Label {
+                Text("About").font(.headline).foregroundStyle(.themeDark)
+            } icon: {
+                Image(systemName: "info.circle.fill").foregroundStyle(.themePurple)
+            }
+
             aboutRow(title: "App", value: viewModel.appName)
             aboutRow(title: "Version", value: viewModel.versionString)
         }
+        .softCard()
     }
 
     func aboutRow(title: String, value: String) -> some View {
         HStack {
-            Text(title)
+            Text(title).foregroundStyle(.secondary)
             Spacer()
-            Text(value).foregroundStyle(.secondary)
+            Text(value).fontWeight(.medium).foregroundStyle(.themeDark)
         }
     }
 }

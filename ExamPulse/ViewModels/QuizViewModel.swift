@@ -1,4 +1,5 @@
 import Foundation
+import SwiftData
 import Observation
 
 @Observable
@@ -45,8 +46,12 @@ final class QuizViewModel {
         hasAnswered = true
         answers[currentIndex] = selected
 
-        if selected == currentQuestion?.correctAnswer {
-            correctCount += 1
+        let isCorrect = selected == currentQuestion?.correctAnswer
+        if isCorrect { correctCount += 1 }
+
+        if let question = currentQuestion {
+            let attempt = AnswerAttempt(questionId: question.id, wasCorrect: isCorrect)
+            attempt.question = question
         }
     }
 
@@ -54,6 +59,10 @@ final class QuizViewModel {
         currentIndex += 1
         selectedAnswer = nil
         hasAnswered = false
+
+        if isFinished {
+            updateTopicMastery()
+        }
     }
 
     func restart() {
@@ -62,5 +71,15 @@ final class QuizViewModel {
         hasAnswered = false
         correctCount = 0
         answers = Array(repeating: nil, count: questions.count)
+    }
+
+    private func updateTopicMastery() {
+        let topicsByID = Dictionary(grouping: questions, by: { $0.topic?.id })
+        for (_, topicQuestions) in topicsByID {
+            guard let topic = topicQuestions.first?.topic else { continue }
+            let allAttempts = topic.questions.flatMap(\.answerAttempts)
+            guard !allAttempts.isEmpty else { continue }
+            topic.masteryScore = Double(allAttempts.filter(\.wasCorrect).count) / Double(allAttempts.count)
+        }
     }
 }

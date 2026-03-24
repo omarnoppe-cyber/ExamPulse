@@ -35,8 +35,14 @@ final class Exam {
         set { statusRaw = newValue.rawValue }
     }
 
+    /// Calendar days from today’s date to the exam date (midnight-to-midnight), matching `Date.relativeDayDescription`.
     var daysUntilExam: Int {
-        Calendar.current.dateComponents([.day], from: .now, to: examDate).day ?? 0
+        let calendar = Calendar.current
+        return calendar.dateComponents(
+            [.day],
+            from: calendar.startOfDay(for: .now),
+            to: calendar.startOfDay(for: examDate)
+        ).day ?? 0
     }
 
     var summaryText: String {

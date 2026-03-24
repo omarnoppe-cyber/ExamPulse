@@ -16,6 +16,7 @@ struct FlashcardView: View {
             }
         }
         .padding()
+        .themeCanvas()
         .navigationBarTitleDisplayMode(.inline)
     }
 }
@@ -35,7 +36,7 @@ private extension FlashcardView {
                 Text("\(viewModel.learnedCount) learned")
                     .font(.caption)
                     .fontWeight(.medium)
-                    .foregroundStyle(.green)
+                    .foregroundStyle(.themePurple)
             }
         }
     }
@@ -43,9 +44,9 @@ private extension FlashcardView {
     var capsuleProgress: some View {
         GeometryReader { geo in
             ZStack(alignment: .leading) {
-                Capsule().fill(Color.blue.opacity(0.12))
+                Capsule().fill(Color.themePurple.opacity(0.12))
                 Capsule()
-                    .fill(Color.blue.gradient)
+                    .fill(Color.themePurple)
                     .frame(width: geo.size.width * viewModel.progress)
                     .animation(.easeInOut(duration: 0.3), value: viewModel.progress)
             }
@@ -60,11 +61,11 @@ private extension FlashcardView {
 private extension FlashcardView {
     func flashcard(_ card: Flashcard) -> some View {
         ZStack {
-            CardFace(label: "FRONT", text: card.front)
+            CardFace(label: "FRONT", text: card.front, backgroundColor: .themeSurface)
                 .opacity(viewModel.isShowingBack ? 0 : 1)
                 .rotation3DEffect(.degrees(viewModel.isShowingBack ? 180 : 0), axis: (x: 0, y: 1, z: 0))
 
-            CardFace(label: "BACK", text: card.back)
+            CardFace(label: "BACK", text: card.back, backgroundColor: Color.themePurple.opacity(0.06))
                 .opacity(viewModel.isShowingBack ? 1 : 0)
                 .rotation3DEffect(.degrees(viewModel.isShowingBack ? 0 : -180), axis: (x: 0, y: 1, z: 0))
         }
@@ -101,31 +102,28 @@ private extension FlashcardView {
                     .multilineTextAlignment(.center)
             } else {
                 HStack(spacing: 12) {
-                    ratingButton(title: "Again", rating: .again, style: .bordered, tint: .red)
-                    ratingButton(title: "Hard", rating: .hard, style: .bordered, tint: .orange)
-                    ratingButton(title: "Easy", rating: .easy, style: .borderedProminent, tint: .green)
+                    ratingButton(title: "Again", rating: .again, color: .red)
+                    ratingButton(title: "Hard", rating: .hard, color: .orange)
+                    ratingButton(title: "Easy", rating: .easy, color: .green)
                 }
             }
         }
     }
 
-    func ratingButton(
-        title: String,
-        rating: FlashcardViewModel.ReviewRating,
-        style: some PrimitiveButtonStyle,
-        tint: Color
-    ) -> some View {
+    func ratingButton(title: String, rating: FlashcardViewModel.ReviewRating, color: Color) -> some View {
         Button {
             withAnimation(.spring(response: 0.32, dampingFraction: 0.85)) {
                 submit(rating)
             }
         } label: {
             Text(title)
+                .fontWeight(.semibold)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
+                .background(color.opacity(0.1), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .foregroundStyle(color)
         }
-        .buttonStyle(style)
-        .tint(tint)
+        .buttonStyle(.plain)
     }
 }
 
@@ -136,11 +134,12 @@ private extension FlashcardView {
         VStack(spacing: 18) {
             Image(systemName: "party.popper.fill")
                 .font(.system(size: 52))
-                .foregroundStyle(.orange)
+                .foregroundStyle(.themePurple)
 
             Text("Session Complete!")
                 .font(.title2)
                 .fontWeight(.bold)
+                .foregroundStyle(.themeDark)
 
             Text("\(viewModel.learnedCount) of \(viewModel.flashcards.count) cards learned")
                 .foregroundStyle(.secondary)
@@ -148,8 +147,7 @@ private extension FlashcardView {
             Button("Study Again") {
                 viewModel.restart()
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
+            .buttonStyle(.primary)
             .padding(.top, 4)
 
             if !dependencies.entitlementManager.isPro {
@@ -158,7 +156,7 @@ private extension FlashcardView {
                 } label: {
                     HStack(spacing: 10) {
                         Image(systemName: "sparkles")
-                            .foregroundStyle(.yellow)
+                            .foregroundStyle(.themePurple)
                         Text("Want more flashcards? Upgrade to Pro")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
@@ -204,15 +202,13 @@ private extension FlashcardView {
 private struct CardFace: View {
     let label: String
     let text: String
+    var backgroundColor: Color = .themeSurface
 
     var body: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .fill(.background)
-                .shadow(color: .black.opacity(0.06), radius: 20, y: 10)
-
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .strokeBorder(.separator.opacity(0.3), lineWidth: 0.5)
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(backgroundColor)
+                .shadow(color: .black.opacity(0.06), radius: 12, y: 4)
 
             VStack(spacing: 16) {
                 Text(label)
@@ -227,6 +223,7 @@ private struct CardFace: View {
                     .font(.title3)
                     .fontWeight(.medium)
                     .multilineTextAlignment(.center)
+                    .foregroundStyle(.themeDark)
                     .frame(maxWidth: .infinity)
 
                 Spacer()

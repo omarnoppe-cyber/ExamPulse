@@ -23,6 +23,7 @@ struct QuizView: View {
             }
         }
         .padding()
+        .themeCanvas()
         .navigationBarTitleDisplayMode(.inline)
     }
 }
@@ -50,9 +51,9 @@ private extension QuizView {
     var capsuleProgress: some View {
         GeometryReader { geo in
             ZStack(alignment: .leading) {
-                Capsule().fill(Color.blue.opacity(0.12))
+                Capsule().fill(Color.themePurple.opacity(0.12))
                 Capsule()
-                    .fill(Color.blue.gradient)
+                    .fill(Color.themePurple)
                     .frame(width: geo.size.width * viewModel.progress)
                     .animation(.easeInOut(duration: 0.3), value: viewModel.progress)
             }
@@ -70,6 +71,7 @@ private extension QuizView {
             Text(question.prompt)
                 .font(.title3)
                 .fontWeight(.semibold)
+                .foregroundStyle(.themeDark)
                 .fixedSize(horizontal: false, vertical: true)
 
             VStack(spacing: 10) {
@@ -91,6 +93,7 @@ private extension QuizView {
             HStack {
                 Text(option)
                     .multilineTextAlignment(.leading)
+                    .foregroundStyle(.themeDark)
                 Spacer()
                 optionIndicator(option, correctAnswer: correctAnswer)
             }
@@ -115,18 +118,18 @@ private extension QuizView {
                 Image(systemName: "xmark.circle.fill").foregroundStyle(.red)
             }
         } else if option == viewModel.selectedAnswer {
-            Image(systemName: "circle.fill").font(.caption).foregroundStyle(.blue)
+            Image(systemName: "circle.fill").font(.caption).foregroundStyle(.themePurple)
         }
     }
 
     func optionFill(_ option: String, correctAnswer: String) -> some ShapeStyle {
         if viewModel.hasAnswered {
-            if option == correctAnswer { return AnyShapeStyle(.green.opacity(0.1)) }
-            if option == viewModel.selectedAnswer { return AnyShapeStyle(.red.opacity(0.1)) }
+            if option == correctAnswer { return AnyShapeStyle(.green.opacity(0.08)) }
+            if option == viewModel.selectedAnswer { return AnyShapeStyle(.red.opacity(0.08)) }
         } else if option == viewModel.selectedAnswer {
-            return AnyShapeStyle(.blue.opacity(0.1))
+            return AnyShapeStyle(Color.themePurple.opacity(0.08))
         }
-        return AnyShapeStyle(.fill.tertiary)
+        return AnyShapeStyle(.themeSurface)
     }
 
     func optionBorder(_ option: String, correctAnswer: String) -> some ShapeStyle {
@@ -134,9 +137,9 @@ private extension QuizView {
             if option == correctAnswer { return AnyShapeStyle(.green.opacity(0.3)) }
             if option == viewModel.selectedAnswer { return AnyShapeStyle(.red.opacity(0.3)) }
         } else if option == viewModel.selectedAnswer {
-            return AnyShapeStyle(.blue.opacity(0.3))
+            return AnyShapeStyle(Color.themePurple.opacity(0.3))
         }
-        return AnyShapeStyle(.separator.opacity(0.2))
+        return AnyShapeStyle(Color.themeDark.opacity(0.06))
     }
 }
 
@@ -151,10 +154,12 @@ private extension QuizView {
                 systemImage: isCorrect ? "checkmark.circle.fill" : "info.circle.fill"
             )
             .font(.headline)
-            .foregroundStyle(isCorrect ? .green : .blue)
+            .foregroundStyle(isCorrect ? .green : .themePurple)
 
             labeledBlock(label: "Answer") {
-                Text(question.correctAnswer).fontWeight(.medium)
+                Text(question.correctAnswer)
+                    .fontWeight(.medium)
+                    .foregroundStyle(.themeDark)
             }
 
             if !question.explanation.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -165,7 +170,7 @@ private extension QuizView {
                 }
             }
         }
-        .stadiumCard()
+        .softCard()
     }
 
     func labeledBlock<C: View>(label: String, @ViewBuilder content: () -> C) -> some View {
@@ -190,8 +195,7 @@ private extension QuizView {
                 Button(viewModel.currentIndex + 1 < viewModel.questions.count ? "Next Question" : "See Results") {
                     withAnimation { viewModel.nextQuestion() }
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
+                .buttonStyle(.primary)
             } else {
                 Text("Select an answer to continue")
                     .font(.subheadline)

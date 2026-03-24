@@ -23,33 +23,19 @@ struct QuizResultView: View {
 
 private extension QuizResultView {
     var scoreRing: some View {
-        ZStack {
-            Circle()
-                .stroke(.quaternary, lineWidth: 10)
-
-            Circle()
-                .trim(from: 0, to: Double(viewModel.scorePercentage) / 100)
-                .stroke(ringColor, style: StrokeStyle(lineWidth: 10, lineCap: .round))
-                .rotationEffect(.degrees(-90))
-                .animation(.easeInOut(duration: 0.8), value: viewModel.scorePercentage)
-
-            VStack(spacing: 2) {
-                Text("\(viewModel.scorePercentage)%")
-                    .font(.system(size: 38, weight: .bold, design: .rounded))
-                Text("Score")
-                    .font(.caption2)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(.secondary)
-                    .textCase(.uppercase)
-            }
-        }
-        .frame(width: 150, height: 150)
+        ScoreRing(
+            value: Double(viewModel.scorePercentage) / 100,
+            trackColor: .themePurple.opacity(0.1),
+            fillColor: ringColor,
+            size: 150,
+            lineWidth: 10
+        )
     }
 
     var ringColor: Color {
         switch viewModel.scorePercentage {
         case 80...100: .green
-        case 60..<80: .orange
+        case 60..<80: .themePeach
         default: .red
         }
     }
@@ -62,6 +48,7 @@ private extension QuizResultView {
         Text(message)
             .font(.title3)
             .fontWeight(.medium)
+            .foregroundStyle(.themeDark)
             .multilineTextAlignment(.center)
     }
 
@@ -87,8 +74,7 @@ private extension QuizResultView {
         Button("Try Again") {
             viewModel.restart()
         }
-        .buttonStyle(.borderedProminent)
-        .controlSize(.large)
+        .buttonStyle(.primary)
     }
 
     var upgradePrompt: some View {
@@ -97,7 +83,7 @@ private extension QuizResultView {
         } label: {
             HStack(spacing: 10) {
                 Image(systemName: "sparkles")
-                    .foregroundStyle(.yellow)
+                    .foregroundStyle(.themePurple)
                 Text("Want more questions? Upgrade to Pro")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)

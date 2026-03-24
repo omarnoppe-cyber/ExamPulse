@@ -3,72 +3,66 @@ import SwiftUI
 struct OnboardingView: View {
     let onContinue: () -> Void
 
+    @State private var contentVisible = false
+
     var body: some View {
-        VStack(spacing: 32) {
+        VStack(spacing: 0) {
             Spacer()
 
-            GradientHero(
-                systemImage: "brain.head.profile",
-                title: "Welcome to ExamPulse",
-                subtitle: "Create exams, upload study documents, and turn them into summaries, flashcards, and quizzes.",
-                gradient: [.blue, .purple]
-            )
-
-            VStack(spacing: 14) {
-                featureRow(
-                    title: "Create an exam",
-                    detail: "Set your title and exam date first.",
-                    systemImage: "calendar.badge.plus",
-                    color: .blue
-                )
-                featureRow(
-                    title: "Upload documents",
-                    detail: "Import PDF, DOCX, and PPTX study material.",
-                    systemImage: "doc.badge.plus",
-                    color: .orange
-                )
-                featureRow(
-                    title: "Study smarter",
-                    detail: "Summaries, flashcards, quizzes, and progress in one flow.",
-                    systemImage: "sparkles",
-                    color: .purple
-                )
+            VStack(spacing: 8) {
+                Text("Your ")
+                    .font(.system(size: 34, weight: .bold)) +
+                Text("Smart\nStudy ")
+                    .font(.system(size: 34, weight: .bold))
+                    .foregroundColor(.themePurple) +
+                Text("Tool for\nAny Exam")
+                    .font(.system(size: 34, weight: .bold))
             }
+            .multilineTextAlignment(.leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .foregroundStyle(.themeDark)
+            .padding(.horizontal, 4)
+
+            Spacer().frame(height: 40)
+
+            ZStack {
+                GradientBlob(size: 240)
+                Image(systemName: "brain.head.profile")
+                    .font(.system(size: 40, weight: .light))
+                    .foregroundStyle(.white.opacity(0.9))
+            }
+            .frame(height: 260)
 
             Spacer()
+
+            Text("Get instant help and support\nwith any exam or study material")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+
+            Spacer().frame(height: 24)
 
             Button {
                 onContinue()
             } label: {
-                Text("Get Started")
-                    .fontWeight(.semibold)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 6)
+                HStack(spacing: 8) {
+                    Text("Get started")
+                    Image(systemName: "arrow.right")
+                        .font(.caption)
+                }
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
+            .buttonStyle(.outline)
         }
         .padding(24)
-        .navigationTitle("Onboarding")
+        .opacity(contentVisible ? 1 : 0)
+        .offset(y: contentVisible ? 0 : 16)
+        .themeCanvas()
         .navigationBarTitleDisplayMode(.inline)
-    }
-
-    private func featureRow(title: String, detail: String, systemImage: String, color: Color) -> some View {
-        HStack(alignment: .top, spacing: 14) {
-            IconCircle(systemImage: systemImage, color: color, size: 38)
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title)
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-                Text(detail)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+        .onAppear {
+            withAnimation(AppAnimation.content) {
+                contentVisible = true
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .stadiumCard(padding: 14)
     }
 }
 

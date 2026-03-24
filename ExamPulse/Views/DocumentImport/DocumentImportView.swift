@@ -1,5 +1,4 @@
 import SwiftUI
-import UniformTypeIdentifiers
 
 struct DocumentImportView: View {
     @Environment(\.modelContext) private var modelContext
@@ -8,80 +7,22 @@ struct DocumentImportView: View {
 
     @State private var viewModel: DocumentImportViewModel?
     @State private var showingFilePicker = false
-    @State private var createdExam: Exam?
 
     var body: some View {
-        Form {
-            Section("Exam Details") {
-                TextField("Exam Title", text: titleBinding)
-
-                DatePicker(
-                    "Exam Date",
-                    selection: examDateBinding,
-                    in: Date()...,
-                    displayedComponents: .date
-                )
-            }
-
-            Section {
-                Button {
-                    showingFilePicker = true
-                } label: {
-                    Label("Add Document", systemImage: "doc.badge.plus")
+        ZStack {
+            Color.themeCanvas.ignoresSafeArea()
+            ScrollView {
+                VStack(spacing: 24) {
+                    headerSection
+                    titleField
+                    dateField
+                    documentsSection
+                    if let error = viewModel?.errorMessage { errorBanner(error) }
+                    createButton
                 }
-
-                ForEach(Array((viewModel?.importedFileURLs ?? []).enumerated()), id: \.offset) { index, url in
-                    HStack {
-                        Image(systemName: iconName(for: url))
-                            .foregroundStyle(.secondary)
-                        Text(url.lastPathComponent)
-                            .lineLimit(1)
-                        Spacer()
-                        Button(role: .destructive) {
-                            viewModel?.removeFile(at: index)
-                        } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundStyle(.secondary)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-            } header: {
-                Text("Documents")
-            } footer: {
-                Text("Supported formats: PDF, DOCX, PPTX")
-            }
-
-            if let error = viewModel?.errorMessage {
-                Section {
-                    Label(error, systemImage: "exclamationmark.triangle")
-                        .foregroundStyle(.red)
-                }
-            }
-
-            Section {
-                Button {
-                    Task {
-                        if let exam = await viewModel?.createExam(context: modelContext) {
-                            createdExam = exam
-                            dismiss()
-                        }
-                    }
-                } label: {
-                    if viewModel?.isParsing == true {
-                        HStack {
-                            ProgressView()
-                                .controlSize(.small)
-                            Text("Processing...")
-                        }
-                        .frame(maxWidth: .infinity)
-                    } else {
-                        Text("Create Exam")
-                            .frame(maxWidth: .infinity)
-                            .fontWeight(.semibold)
-                    }
-                }
-                .disabled(!(viewModel?.canCreate ?? false))
+                .padding(.horizontal, 20)
+                .padding(.top, 12)
+                .padding(.bottom, 32)
             }
         }
         .navigationTitle("New Exam")
@@ -91,16 +32,12 @@ struct DocumentImportView: View {
                 Button("Cancel") { dismiss() }
             }
         }
-        .fileImporter(
+        .documentPickerBridge(
             isPresented: $showingFilePicker,
-            allowedContentTypes: [.pdf, .init(filenameExtension: "docx")!, .init(filenameExtension: "pptx")!],
+            allowedContentTypes: ExamDocumentContentTypes.all,
             allowsMultipleSelection: true
-        ) { result in
-            if let urls = try? result.get() {
-                for url in urls {
-                    viewModel?.addFile(url)
-                }
-            }
+        ) { urls in
+            for url in urls { viewModel?.addFile(url) }
         }
         .onAppear {
             if viewModel == nil {
@@ -110,6 +47,71 @@ struct DocumentImportView: View {
                     parserFactory: dependencies.documentParserFactory
                 )
             }
+        }
+    }
+}
+
+// MARK: - Header
+
+private extension DocumentImportView {
+    var headerSection: some View {
+        VStack(spacing: 8) {
+            IconCircle(systemImage: "doc.badge.plus", color: .themePurple, size: 56)
+
+            Text("Create a new exam")
+                .font(.title3)
+                .fontWeight(.bold)
+                .foregroundStyle(.themeDark)
+
+            Text("Add your study materials and we'll generate\nflashcards, quizzes, and summaries for you.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, 8)
+    }
+}
+
+// MARK: - Fields
+
+private extension DocumentImportView {
+    var titleField: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("EXAM TITLE")
+                .font(.caption2)
+                .fontWeight(.semibold)
+                .foregroundStyle(.secondary)
+                .tracking(0.6)
+
+            TextField("e.g. Biology Midterm", text: titleBinding)
+                .font(.body)
+                .padding(14)
+                .background(.themeSurface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .shadow(color: .black.opacity(0.03), radius: 6, y: 2)
+        }
+    }
+
+    var dateField: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("EXAM DATE")
+                .font(.caption2)
+                .fontWeight(.semibold)
+                .foregroundStyle(.secondary)
+                .tracking(0.6)
+
+            DatePicker(
+                "",
+                selection: examDateBinding,
+                in: Date()...,
+                displayedComponents: .date
+            )
+            .datePickerStyle(.compact)
+            .labelsHidden()
+            .padding(10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.themeSurface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .shadow(color: .black.opacity(0.03), radius: 6, y: 2)
         }
     }
 
@@ -126,13 +128,165 @@ struct DocumentImportView: View {
             set: { viewModel?.examDate = $0 }
         )
     }
+}
 
-    private func iconName(for url: URL) -> String {
-        switch url.pathExtension.lowercased() {
-        case "pdf": return "doc.richtext"
-        case "docx": return "doc.text"
-        case "pptx": return "doc.text.image"
-        default: return "doc"
+// MARK: - Documents
+
+private extension DocumentImportView {
+    var documentsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("STUDY MATERIALS")
+                .font(.caption2)
+                .fontWeight(.semibold)
+                .foregroundStyle(.secondary)
+                .tracking(0.6)
+
+            let files = viewModel?.importedFileURLs ?? []
+
+            if files.isEmpty {
+                emptyDropZone
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(Array(files.enumerated()), id: \.offset) { index, url in
+                        if index > 0 { Divider().padding(.leading, 50) }
+                        fileRow(url, at: index)
+                    }
+                }
+                .background(.themeSurface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .shadow(color: .black.opacity(0.03), radius: 6, y: 2)
+
+                addMoreButton
+            }
         }
+    }
+
+    var emptyDropZone: some View {
+        Button {
+            showingFilePicker = true
+        } label: {
+            VStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(Color.themePurple.opacity(0.08))
+                        .frame(width: 56, height: 56)
+                    Image(systemName: "arrow.up.doc")
+                        .font(.system(size: 22, weight: .medium))
+                        .foregroundStyle(.themePurple)
+                }
+
+                Text("Upload Documents")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.themeDark)
+
+                Text("PDF, DOCX, or PPTX")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 28)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .strokeBorder(Color.themePurple.opacity(0.2), style: StrokeStyle(lineWidth: 1.5, dash: [8, 5]))
+            )
+            .background(.themeSurface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+
+    func fileRow(_ url: URL, at index: Int) -> some View {
+        HStack(spacing: 12) {
+            IconCircle(systemImage: iconName(for: url), color: .themePeach, size: 36)
+
+            Text(url.lastPathComponent)
+                .font(.subheadline)
+                .foregroundStyle(.themeDark)
+                .lineLimit(1)
+
+            Spacer()
+
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    viewModel?.removeFile(at: index)
+                }
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.body)
+                    .foregroundStyle(.secondary.opacity(0.5))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+    }
+
+    var addMoreButton: some View {
+        Button {
+            showingFilePicker = true
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "plus.circle.fill")
+                    .foregroundStyle(.themePurple)
+                Text("Add more files")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundStyle(.themePurple)
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    func iconName(for url: URL) -> String {
+        switch url.pathExtension.lowercased() {
+        case "pdf": "doc.richtext"
+        case "docx": "doc.text"
+        case "pptx": "doc.text.image"
+        default: "doc"
+        }
+    }
+}
+
+// MARK: - Error
+
+private extension DocumentImportView {
+    func errorBanner(_ message: String) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(.red)
+            Text(message)
+                .font(.caption)
+                .foregroundStyle(.red)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.red.opacity(0.06), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+}
+
+// MARK: - Create Button
+
+private extension DocumentImportView {
+    var createButton: some View {
+        Button {
+            Task {
+                if let _ = await viewModel?.createExam(context: modelContext) {
+                    dismiss()
+                }
+            }
+        } label: {
+            Group {
+                if viewModel?.isParsing == true {
+                    HStack(spacing: 10) {
+                        ProgressView().controlSize(.small).tint(.white)
+                        Text("Processing...")
+                    }
+                } else {
+                    Label("Create Exam", systemImage: "sparkles")
+                }
+            }
+        }
+        .buttonStyle(.primary)
+        .disabled(!(viewModel?.canCreate ?? false))
+        .padding(.top, 4)
     }
 }

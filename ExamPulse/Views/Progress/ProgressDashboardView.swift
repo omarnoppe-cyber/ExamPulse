@@ -3,53 +3,86 @@ import SwiftData
 
 struct ProgressDashboardView: View {
     @Query(sort: \Exam.examDate) private var exams: [Exam]
-    @State private var viewModel = ProgressViewModel()
+    @Environment(\.dependencies) private var dependencies
+
+    private var allAttempts: [AnswerAttempt] {
+        exams.flatMap { $0.questions.flatMap(\.answerAttempts) }
+    }
+
+    private var accuracy: Double {
+        guard !allAttempts.isEmpty else { return 0 }
+        return Double(allAttempts.filter(\.wasCorrect).count) / Double(allAttempts.count)
+    }
+
+    private var flashcardsReviewed: Int {
+        exams.flatMap(\.flashcards).filter { $0.reviewCount > 0 }.count
+    }
+
+    private var daysRemaining: Int? {
+        guard let next = exams.first(where: { $0.examDate > Date() }) else { return nil }
+        return Calendar.current.dateComponents([.day], from: Date(), to: next.examDate).day
+    }
 
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
-                accuracySection
-                flashcardsSection
+                accuracyCard
+                statsRow
                 weakTopicsSection
-                daysRemainingSection
             }
-            .padding()
+            .padding(.horizontal, 20)
+            .padding(.top, 8)
+            .padding(.bottom, 32)
         }
-        .background(Color(uiColor: .systemGroupedBackground))
+        .themeCanvas()
         .navigationTitle("Progress")
+        .navigationBarTitleDisplayMode(.large)
     }
 }
 
-// MARK: - Accuracy
+// MARK: - Accuracy Card
 
 private extension ProgressDashboardView {
-    var accuracySection: some View {
-        let accuracy = viewModel.accuracyPercentage(in: exams)
-        return metricCard(
-            title: "Accuracy",
-            value: "\(accuracy)%",
-            systemImage: "target",
-            color: .blue,
-            progress: Double(accuracy) / 100,
-            detail: "Based on answered quiz questions"
-        )
+    var accuracyCard: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Quiz Accuracy")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.themeDark)
+                Text("\(allAttempts.count) total attempts")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            ScoreRing(value: accuracy, size: 64, lineWidth: 6)
+        }
+        .softCard()
     }
 }
 
-// MARK: - Flashcards
+// MARK: - Stats Row
 
 private extension ProgressDashboardView {
-    var flashcardsSection: some View {
-        let reviewed = viewModel.flashcardsReviewed(in: exams)
-        let total = viewModel.totalFlashcards(in: exams)
-        return metricCard(
-            title: "Flashcards Reviewed",
-            value: "\(reviewed)",
-            systemImage: "rectangle.on.rectangle.angled",
-            color: .orange,
-            progress: viewModel.flashcardsReviewedProgress(in: exams),
-            detail: "\(reviewed) of \(total) cards reviewed at least once"
-        )
+    var statsRow: some View {
+        HStack(spacing: 14) {
+            statCard(value: "\(flashcardsReviewed)", label: "Flashcards\nreviewed", icon: "rectangle.on.rectangle.angled", color: .themePeach)
+            statCard(value: daysRemaining.map { "\($0)" } ?? "—", label: "Days\nremaining", icon: "calendar", color: .themePurple)
+        }
+    }
+
+    func statCard(value: String, label: String, icon: String, color: Color) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            IconCircle(systemImage: icon, color: color, size: 36)
+            Text(value)
+                .font(.system(size: 24, weight: .bold, design: .rounded))
+                .foregroundStyle(.themeDark)
+            Text(label)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(2, reservesSpace: true)
+        }
+        .softCard()
     }
 }
 
@@ -57,104 +90,53 @@ private extension ProgressDashboardView {
 
 private extension ProgressDashboardView {
     var weakTopicsSection: some View {
-        let topics = Array(viewModel.weakTopics(in: exams).prefix(3))
-        return VStack(alignment: .leading, spacing: 16) {
-            Label("Weak Topics", systemImage: "exclamationmark.triangle.fill")
-                .font(.headline)
-                .foregroundStyle(.red)
+        VStack(spacing: 14) {
+            SectionHeader(title: "Focus Areas")
 
-            if topics.isEmpty {
-                Text("Weak topics will appear here after you start reviewing flashcards or answering quiz questions.")
+            let weakTopics = exams.flatMap(\.topics)
+                .filter { $0.masteryScore < 0.6 }
+                .sorted { $0.masteryScore < $1.masteryScore }
+                .prefix(5)
+
+            if weakTopics.isEmpty {
+                Text("No weak topics yet. Keep studying!")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.vertical, 8)
             } else {
-                ForEach(topics, id: \.id) { topic in
-                    weakTopicRow(topic)
+                VStack(spacing: 0) {
+                    ForEach(Array(weakTopics.enumerated()), id: \.element.id) { index, topic in
+                        if index > 0 { Divider().padding(.leading, 54) }
+                        weakTopicRow(topic)
+                    }
                 }
+                .softCard(padding: 0)
             }
         }
-        .stadiumCard()
     }
 
     func weakTopicRow(_ topic: Topic) -> some View {
-        let score = viewModel.topicWeaknessScore(topic)
-        return VStack(alignment: .leading, spacing: 8) {
-            HStack {
+        HStack(spacing: 14) {
+            IconCircle(systemImage: "exclamationmark.triangle", color: .orange, size: 34)
+            VStack(alignment: .leading, spacing: 2) {
                 Text(topic.title)
-                    .fontWeight(.semibold)
-                Spacer()
-                Text("\(Int(score * 100))% weak")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundStyle(.themeDark)
+                Text("Mastery: \(Int(topic.masteryScore * 100))%")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            capsuleProgress(value: score, tint: .red)
+            Spacer()
         }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
     }
 }
 
-// MARK: - Days Remaining
-
-private extension ProgressDashboardView {
-    var daysRemainingSection: some View {
-        let days = viewModel.daysRemaining(in: exams)
-        return metricCard(
-            title: "Days Remaining",
-            value: days.map { "\($0)" } ?? "--",
-            systemImage: "calendar",
-            color: .green,
-            progress: viewModel.daysRemainingProgress(in: exams),
-            detail: days != nil ? "Until your next exam" : "Create an exam to track time remaining"
-        )
-    }
-}
-
-// MARK: - Reusable Card
-
-private extension ProgressDashboardView {
-    func metricCard(
-        title: String,
-        value: String,
-        systemImage: String,
-        color: Color,
-        progress: Double,
-        detail: String
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                IconCircle(systemImage: systemImage, color: color, size: 36)
-                Text(title)
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-                Spacer()
-                Text(value)
-                    .font(.title2)
-                    .fontWeight(.bold)
-                    .monospacedDigit()
-            }
-
-            capsuleProgress(value: progress, tint: color)
-
-            Text(detail)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
-        .stadiumCard()
-    }
-
-    func capsuleProgress(value: Double, tint: Color) -> some View {
-        GeometryReader { geo in
-            let clamped = min(max(value, 0), 1)
-            ZStack(alignment: .leading) {
-                Capsule()
-                    .fill(tint.opacity(0.12))
-
-                Capsule()
-                    .fill(tint.gradient)
-                    .frame(width: geo.size.width * clamped)
-                    .animation(.easeInOut(duration: 0.5), value: clamped)
-            }
-        }
-        .frame(height: 8)
-        .clipShape(Capsule())
-    }
+#Preview {
+    ProgressDashboardView()
+        .modelContainer(for: Exam.self, inMemory: true)
+        .environment(\.dependencies, DependencyContainer())
 }

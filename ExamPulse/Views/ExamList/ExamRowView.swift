@@ -19,12 +19,12 @@ struct ExamRowView: View {
         Group {
             switch exam.status {
             case .new:
-                IconCircle(systemImage: "doc.badge.plus", color: .blue)
+                IconCircle(systemImage: "doc.badge.plus", color: .themePurple)
             case .parsing:
                 ProgressView()
                     .frame(width: 40, height: 40)
             case .generating:
-                IconCircle(systemImage: "sparkles", color: .orange)
+                IconCircle(systemImage: "sparkles", color: .themePeach)
             case .ready:
                 IconCircle(systemImage: "checkmark", color: .green)
             case .error:
@@ -37,6 +37,7 @@ struct ExamRowView: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(exam.title)
                 .font(.headline)
+                .foregroundStyle(.themeDark)
             Text(exam.examDate.shortFormatted)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
@@ -78,8 +79,8 @@ extension ExamStatus {
 
     var color: Color {
         switch self {
-        case .new: .blue
-        case .parsing, .generating: .orange
+        case .new: .themePurple
+        case .parsing, .generating: .themePeach
         case .ready: .green
         case .error: .red
         }

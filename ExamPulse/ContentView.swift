@@ -6,25 +6,78 @@ struct ContentView: View {
     @AppStorage("hasSeenPaywall") private var hasSeenPaywall = false
     @Environment(\.dependencies) private var dependencies
     @State private var coordinator = AppCoordinator()
+    @State private var showSplash = true
 
     private var isPro: Bool { dependencies.entitlementManager.isPro }
 
+    private enum RootPhase: Int, Equatable {
+        case splash
+        case onboarding
+        case paywall
+        case main
+    }
+
+    private var rootPhase: RootPhase {
+        if showSplash { return .splash }
+        if !hasSeenOnboarding { return .onboarding }
+        if !hasSeenPaywall && !isPro { return .paywall }
+        return .main
+    }
+
     var body: some View {
-        if !hasSeenOnboarding {
-            NavigationStack {
-                OnboardingView {
-                    hasSeenOnboarding = true
+        ZStack {
+            switch rootPhase {
+            case .splash:
+                SplashView(onFinished: finishSplash)
+                    .transition(.opacity.combined(with: .scale(scale: 0.96)))
+                    .zIndex(1)
+
+            case .onboarding:
+                NavigationStack {
+                    OnboardingView {
+                        hasSeenOnboarding = true
+                    }
                 }
-            }
-        } else if !hasSeenPaywall && !isPro {
-            NavigationStack {
-                PaywallView {
-                    hasSeenPaywall = true
+                .tint(.themePurple)
+                .transition(
+                    .asymmetric(
+                        insertion: .opacity.combined(with: .move(edge: .trailing)),
+                        removal: .opacity.combined(with: .move(edge: .leading))
+                    )
+                )
+                .zIndex(0)
+
+            case .paywall:
+                NavigationStack {
+                    PaywallView {
+                        hasSeenPaywall = true
+                    }
                 }
+                .tint(.themePurple)
+                .transition(
+                    .asymmetric(
+                        insertion: .opacity.combined(with: .move(edge: .trailing)),
+                        removal: .opacity.combined(with: .move(edge: .leading))
+                    )
+                )
+                .zIndex(0)
+
+            case .main:
+                mainTabs
+                    .transition(
+                        .asymmetric(
+                            insertion: .opacity.combined(with: .move(edge: .bottom)),
+                            removal: .opacity
+                        )
+                    )
+                    .zIndex(0)
             }
-        } else {
-            mainTabs
         }
+        .animation(AppAnimation.root, value: rootPhase)
+    }
+
+    private func finishSplash() {
+        showSplash = false
     }
 
     private var mainTabs: some View {
@@ -60,6 +113,7 @@ struct ContentView: View {
             }
             .tag(AppCoordinator.AppTab.settings)
         }
+        .animation(AppAnimation.tab, value: coordinator.selectedTab)
     }
 }
 

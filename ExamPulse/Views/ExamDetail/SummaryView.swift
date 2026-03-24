@@ -16,9 +16,11 @@ struct SummaryView: View {
                 summarySection
                 topicsSection
             }
-            .padding()
+            .padding(.horizontal, 20)
+            .padding(.top, 8)
+            .padding(.bottom, 32)
         }
-        .background(Color(uiColor: .systemGroupedBackground))
+        .themeCanvas()
         .navigationTitle("Summary")
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -32,23 +34,20 @@ private extension SummaryView {
             NavigationLink {
                 topicQuizPicker
             } label: {
-                Label("Start Quiz", systemImage: "questionmark.circle.fill")
-                    .fontWeight(.semibold)
-                    .frame(maxWidth: .infinity)
+                Text("Start Quiz")
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
+            .buttonStyle(.primary)
             .disabled(viewModel.totalQuestionCount == 0)
 
             NavigationLink {
                 topicFlashcardsPicker
             } label: {
-                Label("Review Flashcards", systemImage: "rectangle.on.rectangle.angled")
-                    .fontWeight(.semibold)
-                    .frame(maxWidth: .infinity)
+                HStack(spacing: 8) {
+                    Image(systemName: "rectangle.on.rectangle.angled")
+                    Text("Review Flashcards")
+                }
             }
-            .buttonStyle(.bordered)
-            .controlSize(.large)
+            .buttonStyle(.outline)
             .disabled(viewModel.totalFlashcardCount == 0)
         }
     }
@@ -60,6 +59,7 @@ private extension SummaryView {
     var summarySection: some View {
         contentCard(title: "Summary", systemImage: "doc.text") {
             Text(LocalizedStringKey(viewModel.summaryText))
+                .foregroundStyle(.themeDark)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .textSelection(.enabled)
         }
@@ -88,7 +88,7 @@ private extension SummaryView {
     func topicRow(_ topic: Topic) -> some View {
         HStack(alignment: .top, spacing: 12) {
             Circle()
-                .fill(.blue)
+                .fill(.themePurple)
                 .frame(width: 8, height: 8)
                 .padding(.top, 7)
 
@@ -96,6 +96,7 @@ private extension SummaryView {
                 Text(topic.title)
                     .font(.subheadline)
                     .fontWeight(.semibold)
+                    .foregroundStyle(.themeDark)
                 Text("\(topic.flashcards.count) flashcards \u{2022} \(topic.questions.count) questions")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -155,10 +156,13 @@ private extension SummaryView {
         @ViewBuilder content: () -> Content
     ) -> some View {
         VStack(alignment: .leading, spacing: 16) {
-            Label(title, systemImage: systemImage)
-                .font(.headline)
+            Label {
+                Text(title).font(.headline).foregroundStyle(.themeDark)
+            } icon: {
+                Image(systemName: systemImage).foregroundStyle(.themePurple)
+            }
             content()
         }
-        .stadiumCard()
+        .softCard()
     }
 }
